@@ -1,0 +1,32 @@
+sudo: false
+
+language: cpp
+
+cache:
+  apt: true
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.6
+    packages:
+    - gcc-4.8
+    - g++-4.8
+    - clang-format-3.6
+    - cppcheck
+
+compiler:
+  - clang
+  - gcc
+
+install:
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+
+script:
+  - bash -e ./tools/check_style.sh
+  - bash -e ./tools/check_code.sh
+  - mkdir build
+  - cd build
+  - cmake ../
+  - make

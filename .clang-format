@@ -1,0 +1,15 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: true
+BinPackParameters: false
+BreakConstructorInitializersBeforeComma: true
+DerivePointerAlignment: false
+PointerAlignment: Left
+ColumnLimit: 80
+TabWidth: 2
