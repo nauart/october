@@ -27,6 +27,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 
 include_directories(include)
 
+set(SOURCES
+  src/main.cc
+)
+
+set(LIBRARIES
+  GL
+  glut
+)
+
+add_executable(october ${SOURCES})
+target_link_libraries(october ${LIBRARIES})
+
 enable_testing()
 
 add_subdirectory(test)
