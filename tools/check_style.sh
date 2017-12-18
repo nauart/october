@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-FILES=$(find ./ -iname *.h -o -iname *.c -o -iname *.cc -o -iname *.hpp -o -iname *.cpp)
+FILES=$(find ./ -type d -name googletest -prune -iname *.h -o -iname *.c -o -iname *.cc -o -iname *.hpp -o -iname *.cpp)
 
 if [ "$1" = "--fix" ]
 then
