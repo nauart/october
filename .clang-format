@@ -7,7 +7,7 @@ AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 BinPackArguments: true
-BinPackParameters: false
+BinPackParameters: true
 BreakConstructorInitializersBeforeComma: true
 DerivePointerAlignment: false
 PointerAlignment: Left
