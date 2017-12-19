@@ -11,8 +11,8 @@ addons:
     - ubuntu-toolchain-r-test
     - llvm-toolchain-precise-3.6
     packages:
-    - gcc-4.8
-    - g++-4.8
+    - gcc-5
+    - g++-5
     - clang-format-3.6
     - cppcheck
 
@@ -21,7 +21,7 @@ compiler:
   - gcc
 
 install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
 
 script:
   - bash -e ./tools/check_style.sh
