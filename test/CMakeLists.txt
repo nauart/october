@@ -20,7 +20,21 @@
 
 include_directories(
   googletest/googletest/include
-  googletest/googlemock/include
 )
+
+set(GEOMETRY_SOURCES
+  src/geometry_test.cc
+)
+
+set(LIBRARIES
+  gtest
+  gtest_main
+  pthread
+)
+
+add_executable(geometry_test ${GEOMETRY_SOURCES})
+target_link_libraries(geometry_test ${LIBRARIES})
+
+add_test(NAME geometry COMMAND geometry_test)
 
 add_subdirectory(googletest)
