@@ -20,13 +20,13 @@
  * SOFTWARE.
  */
 
-#include <cstddef>
-#include <vector>
-#include <functional>
-#include <array>
-#include <memory>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <functional>
+#include <memory>
 #include <utility>
+#include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

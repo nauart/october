@@ -22,9 +22,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
-#include <algorithm>
 
 namespace october {
 namespace geometry {
