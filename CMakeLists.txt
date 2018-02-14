@@ -22,7 +22,7 @@ cmake_minimum_required(VERSION 2.8.7)
 
 project(october)
 
-set(GCC_COVERAGE_COMPILE_FLAGS "-O2 -Wextra -Werror -std=c++14")
+set(GCC_COVERAGE_COMPILE_FLAGS "-fno-exceptions -O2 -Wall -Wextra -Werror -std=c++17")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 
 include_directories(include)
