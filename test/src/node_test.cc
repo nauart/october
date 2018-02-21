@@ -151,7 +151,7 @@ TEST_P(NodeTest, ProcessRootChilds_Success) {
   node.processChilds(process_childs_func_, interpolate_func_, 1.0f, 2.0f);
 }
 
-TEST_P(NodeTest, ProcessChildsPayload_Success) {
+TEST_P(NodeTest, ProcessChildNodesPayload_Success) {
   using namespace ::testing;
 
   ChildsTestData childs;
@@ -183,7 +183,7 @@ TEST_P(NodeTest, ProcessChildsPayload_Success) {
   node.processPayload(process_payload_func_, interpolate_func_, 1.0f, 2.0f);
 }
 
-TEST_P(NodeTest, ProcessChildsChilds_Success) {
+TEST_P(NodeTest, ProcessChildNodesChilds_Success) {
   using namespace ::testing;
 
   ChildsTestData childs;
