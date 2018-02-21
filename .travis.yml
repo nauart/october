@@ -1,33 +1,23 @@
-sudo: false
+os: linux
 
 language: cpp
-
-cache:
-  apt: true
+compiler: gcc
 
 addons:
   apt:
     sources:
-    - ubuntu-toolchain-r-test
-    - llvm-toolchain-precise-3.6
+      - ubuntu-toolchain-r-test
     packages:
-    - gcc-5
-    - g++-5
-    - clang-format-3.6
-    - cppcheck
+      - g++-7
+      - cppcheck
 
-compiler:
-  - clang
-  - gcc
-
-install:
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
+before_script:
+  - export CC=gcc-7
+  - export CXX=g++-7
 
 script:
   - bash -e ./tools/check_style.sh
   - bash -e ./tools/check_code.sh
   - mkdir build
   - cd build
-  - cmake ../
-  - make
-  - make test
+  - cmake ../ && make && make test

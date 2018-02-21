@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Artem Nosach
+ * Copyright (c) 2018 Artem Nosach
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,15 @@
  * SOFTWARE.
  */
 
-#include <cstddef>
-#include <vector>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <utility>
+#include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "node.h"
@@ -33,130 +37,188 @@ namespace october {
 namespace node {
 namespace test {
 
-using ChildNodesTestData = std::vector<std::size_t>;
+using ChildsIndexesData = std::vector<std::size_t>;
 
-const std::vector<ChildNodesTestData> fillChildNodesData(
-    const std::size_t range) {
-  std::vector<ChildNodesTestData> result;
-  for (std::size_t i = 0u; i < range; ++i) {
-    for (std::size_t j = 0u; j < range; ++j) {
-      for (std::size_t k = 0u; k < range; ++k) {
-        for (std::size_t l = 0u; l < range; ++l) {
-          result.push_back({i, j, k, l});
-        }
-      }
-    }
-  }
-  return result;
-}
-
-static const std::vector<ChildNodesTestData> child_nodes_data =
-    fillChildNodesData(2u);
-static const std::vector<ChildNodesTestData> child_nodes_to_process_data =
-    fillChildNodesData(4u);
-
-template <std::size_t N>
-struct TypeValue {
-  static const std::size_t value_ = N;
+// clang-format off
+static const std::vector<ChildsIndexesData> childs_indexes_data = {
+  {},
+  {0u},
+  {0u, 1u},
+  {0u, 1u, 1u},
+  {1u, 0u, 0u, 1u},
+  {1u, 1u, 0u, 0u, 0u},
+  {0u, 1u, 1u, 0u, 1u, 1u},
+  {1u, 0u, 1u, 0u, 1u, 0u, 1u},
+  {1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u},
 };
 
-struct PayloadTestData {
-  PayloadTestData() : value_(0u) {}
-  explicit PayloadTestData(const std::size_t value) : value_(value) {}
+static const std::vector<ChildsIndexesData> childs_to_process_indexes_data = {
+  {},
+  {0u},
+  {0u, 1u},
+  {0u, 1u, 2u},
+  {0u, 1u, 2u, 3u},
+  {0u, 1u, 2u, 3u, 4u},
+  {0u, 1u, 2u, 3u, 4u, 5u},
+  {0u, 1u, 2u, 3u, 4u, 5u, 6u},
+  {0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u}
+};
+// clang-format on
 
-  std::size_t value_;
+class NodeMock;
+
+using PayloadTestData = float;
+using ChildsTestData = std::array<std::unique_ptr<NodeMock>, 8u>;
+using ParameterTestData = float;
+
+using ProcessPayloadFunc = std::function<ChildsIndexesData(
+    const PayloadTestData&, ParameterTestData, const ParameterTestData&)>;
+using ProcessChildsFunc = std::function<ChildsIndexesData(
+    const ChildsTestData&, ParameterTestData, const ParameterTestData&)>;
+using InterpolateFunc =
+    std::function<std::tuple<ParameterTestData, const ParameterTestData&>(
+        std::size_t, ParameterTestData, const ParameterTestData&)>;
+
+class FunctionMock {
+ public:
+  MOCK_CONST_METHOD3(processPayloadFunc,
+                     ChildsIndexesData(const PayloadTestData&,
+                                       ParameterTestData,
+                                       const ParameterTestData&));
+  MOCK_CONST_METHOD3(processChildsFunc,
+                     ChildsIndexesData(const ChildsTestData&, ParameterTestData,
+                                       const ParameterTestData&));
+  MOCK_CONST_METHOD3(interpolateFunc,
+                     std::tuple<ParameterTestData, const ParameterTestData&>(
+                         std::size_t, ParameterTestData,
+                         const ParameterTestData&));
 };
 
-ChildNodesTestData writeFunc(PayloadTestData& origin,
-                             const PayloadTestData& input,
-                             const ChildNodesTestData& result) {
-  origin = input;
-  return result;
-}
+class NodeMock {
+ public:
+  MOCK_CONST_METHOD4(processPayload,
+                     void(ProcessPayloadFunc, InterpolateFunc,
+                          ParameterTestData, const ParameterTestData&));
+  MOCK_CONST_METHOD4(processChilds,
+                     void(ProcessChildsFunc, InterpolateFunc, ParameterTestData,
+                          const ParameterTestData&));
+};
 
-ChildNodesTestData readFunc(const PayloadTestData& origin,
-                            PayloadTestData& output,
-                            const ChildNodesTestData& result) {
-  output = origin;
-  return result;
-}
-
-template <typename T>
-class NodeTest : public ::testing::Test {
+class NodeTest : public ::testing::TestWithParam<
+                     std::tuple<ChildsIndexesData, ChildsIndexesData> > {
  protected:
-  using NodeType = Node<PayloadTestData, T::value_>;
-  using ChildNodesContainerType = typename NodeType::ChildNodesContainerType;
+  void SetUp() {
+    using namespace std::placeholders;
 
-  void setNode(const ChildNodesTestData& child_nodes) {
-    ChildNodesContainerType childs;
-    for (std::size_t i = 0; i < child_nodes.size(); ++i) {
-      if (i < childs.size() && 0u != child_nodes.at(i)) {
-        childs[i].reset(
-            new NodeType(PayloadTestData(), ChildNodesContainerType()));
-      }
-    }
-    node_.reset(new NodeType(PayloadTestData(), std::move(childs)));
+    process_payload_func_ = std::bind(&FunctionMock::processPayloadFunc,
+                                      &function_mock_, _1, _2, _3);
+    process_childs_func_ = std::bind(&FunctionMock::processChildsFunc,
+                                     &function_mock_, _1, _2, _3);
+    interpolate_func_ =
+        std::bind(&FunctionMock::interpolateFunc, &function_mock_, _1, _2, _3);
   }
 
-  template <typename F, typename... Args>
-  void processNode(const F& function, Args&&... args) {
-    node_->process(function, std::forward<Args>(args)...);
-  }
-
- private:
-  NodePointer<NodeType> node_;
+ protected:
+  FunctionMock function_mock_;
+  ProcessPayloadFunc process_payload_func_;
+  ProcessChildsFunc process_childs_func_;
+  InterpolateFunc interpolate_func_;
 };
 
-typedef ::testing::Types<TypeValue<0u>, TypeValue<1u>, TypeValue<2u>,
-                         TypeValue<3u>, TypeValue<4u> > TestTypes;
+TEST_P(NodeTest, ProcessRootPayload_Success) {
+  using namespace ::testing;
 
-TYPED_TEST_CASE(NodeTest, TestTypes);
+  Node<PayloadTestData, ChildsTestData> node((PayloadTestData(0.0f)),
+                                             (ChildsTestData()));
 
-TYPED_TEST(NodeTest, ProcessRootNode_Success) {
-  const std::size_t payload_value = 8u;
-  PayloadTestData payload;
+  EXPECT_CALL(function_mock_, processPayloadFunc(0.0f, 1.0f, 2.0f));
+  EXPECT_CALL(function_mock_, processChildsFunc(_, _, _)).Times(0);
+  EXPECT_CALL(function_mock_, interpolateFunc(_, _, _)).Times(0);
 
-  for (const auto& child_nodes : child_nodes_data) {
-    this->setNode(child_nodes);
-    this->processNode(readFunc, payload, ChildNodesTestData());
-    EXPECT_NE(payload_value, payload.value_);
-
-    this->processNode(writeFunc, PayloadTestData(payload_value),
-                      ChildNodesTestData());
-    this->processNode(readFunc, payload, ChildNodesTestData());
-    EXPECT_EQ(payload_value, payload.value_);
-  }
+  node.processPayload(process_payload_func_, interpolate_func_, 1.0f, 2.0f);
 }
 
-TYPED_TEST(NodeTest, ProcessChildNodes_Success) {
-  const std::size_t payload_value = 8u;
-  PayloadTestData payload;
+TEST_P(NodeTest, ProcessRootChilds_Success) {
+  using namespace ::testing;
 
-  for (const auto& child_nodes : child_nodes_data) {
-    for (const auto& to_process : child_nodes_to_process_data) {
-      this->setNode(child_nodes);
-      for (std::size_t i = 0; i < child_nodes.size(); ++i) {
-        if (i < TypeParam::value_ && 0u != child_nodes.at(i)) {
-          this->processNode(readFunc, payload, ChildNodesTestData({i}));
-          EXPECT_NE(payload_value, payload.value_);
-        }
-      }
+  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
+                                             (ChildsTestData()));
 
-      this->processNode(writeFunc, PayloadTestData(payload_value), to_process);
-      for (std::size_t i = 0; i < child_nodes.size(); ++i) {
-        if (i < TypeParam::value_ && 0u != child_nodes.at(i)) {
-          this->processNode(readFunc, payload, ChildNodesTestData({i}));
-          if (to_process.end() !=
-              std::find(to_process.begin(), to_process.end(), i)) {
-            EXPECT_EQ(payload_value, payload.value_);
-          } else {
-            EXPECT_NE(payload_value, payload.value_);
-          }
-        }
+  EXPECT_CALL(function_mock_, processChildsFunc(_, 1.0f, 2.0f));
+  EXPECT_CALL(function_mock_, processPayloadFunc(_, _, _)).Times(0);
+  EXPECT_CALL(function_mock_, interpolateFunc(_, _, _)).Times(0);
+
+  node.processChilds(process_childs_func_, interpolate_func_, 1.0f, 2.0f);
+}
+
+TEST_P(NodeTest, ProcessChildsPayload_Success) {
+  using namespace ::testing;
+
+  ChildsTestData childs;
+  ChildsIndexesData childs_indexes = std::get<0>(GetParam());
+  ChildsIndexesData childs_to_process_indexes = std::get<1>(GetParam());
+
+  for (std::size_t i = 0; i < childs_indexes.size(); ++i) {
+    if (0 != childs_indexes.at(i)) {
+      childs.at(i) = std::make_unique<NodeMock>();
+      if (childs_to_process_indexes.end() !=
+          std::find(childs_to_process_indexes.begin(),
+                    childs_to_process_indexes.end(), i)) {
+        EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, 2.0f, 1.0f));
+      } else {
+        EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, _, _)).Times(0);
       }
+      EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, _, _)).Times(0);
     }
   }
+
+  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
+                                             std::move(childs));
+
+  EXPECT_CALL(function_mock_, processPayloadFunc(_, _, _))
+      .WillOnce(Return(childs_to_process_indexes));
+  EXPECT_CALL(function_mock_, interpolateFunc(_, 1.0f, 2.0f))
+      .WillRepeatedly(Return(std::make_tuple(2.0f, 1.0f)));
+
+  node.processPayload(process_payload_func_, interpolate_func_, 1.0f, 2.0f);
 }
+
+TEST_P(NodeTest, ProcessChildsChilds_Success) {
+  using namespace ::testing;
+
+  ChildsTestData childs;
+  ChildsIndexesData childs_indexes = std::get<0>(GetParam());
+  ChildsIndexesData childs_to_process_indexes = std::get<1>(GetParam());
+
+  for (std::size_t i = 0; i < childs_indexes.size(); ++i) {
+    if (0 != childs_indexes.at(i)) {
+      childs.at(i) = std::make_unique<NodeMock>();
+      if (childs_to_process_indexes.end() !=
+          std::find(childs_to_process_indexes.begin(),
+                    childs_to_process_indexes.end(), i)) {
+        EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, 2.0f, 1.0f));
+      } else {
+        EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, _, _)).Times(0);
+      }
+      EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, _, _)).Times(0);
+    }
+  }
+
+  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
+                                             std::move(childs));
+
+  EXPECT_CALL(function_mock_, processChildsFunc(_, _, _))
+      .WillOnce(Return(childs_to_process_indexes));
+  EXPECT_CALL(function_mock_, interpolateFunc(_, 1.0f, 2.0f))
+      .WillRepeatedly(Return(std::make_tuple(2.0f, 1.0f)));
+
+  node.processChilds(process_childs_func_, interpolate_func_, 1.0f, 2.0f);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ChildsIndexesInstantiation, NodeTest,
+    ::testing::Combine(::testing::ValuesIn(childs_indexes_data),
+                       ::testing::ValuesIn(childs_to_process_indexes_data)));
 
 }  // namespace test
 }  // namespace node

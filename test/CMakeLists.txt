@@ -20,6 +20,7 @@
 
 include_directories(
   googletest/googletest/include
+  googletest/googlemock/include
 )
 
 set(GEOMETRY_SOURCES
@@ -33,6 +34,8 @@ set(NODE_SOURCES
 set(LIBRARIES
   gtest
   gtest_main
+  gmock
+  gmock_main
   pthread
 )
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Artem Nosach
+ * Copyright (c) 2018 Artem Nosach
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,69 +22,140 @@
 
 #pragma once
 
-#include <cstddef>
-#include <array>
-#include <memory>
-#include <utility>
 #include <algorithm>
+#include <functional>
+#include <tuple>
+#include <utility>
 
 namespace october {
 namespace node {
 
 /**
- * @brief Represents type of pointer to node
+ * @brief Represents node with custom payload and childs container
  */
-template <typename NodeType>
-using NodePointer = std::unique_ptr<NodeType>;
-
-/**
- * @brief Represents tree node with custom payload and arbitrary childs count
- */
-template <typename PayloadType, std::size_t N>
+template <typename Payload, typename ChildsContainer>
 class Node {
  public:
   /**
-   * @brief Type of container for pointers to child nodes
-   */
-  using ChildNodesContainerType = std::array<NodePointer<Node>, N>;
-
-  /**
    * @brief Constructor
    * @param payload Payload to be stored in the node
-   * @param childs STL container of pointers to child nodes (takes ownership)
+   * @param childs STL container of pointers to child nodes
    */
   template <typename U, typename V>
-  Node(U&& payload, V&& childs)
+  explicit Node(U&& payload, V&& childs)
       : payload_(std::forward<U>(payload)), childs_(std::forward<V>(childs)) {}
 
   /**
-   * @brief Processes node recursively with given user function.
+   * @brief Processes node's payload recursively with given user function.
    * Uses DFS pre-order algorithm with selective child nodes processing
    * (user function returns scope of child nodes to be processed on next step)
    *
-   * @param function Function to be applied to nodes recursively.
+   * @param process_func Function to be applied to nodes recursively.
    * Function is expected to have following signature:
-   * "Container function(PayloadType&, ...)"
+   * "Container function(Payload&, ...)"
    * where "Container" type is STL container of child nodes indexes
+   *
+   * @param interpolate_func Function to be applied to arguments list
+   * before each child processing for modifying arguments according to
+   * child's index (arguments interpolation).
+   * Function is expected to have following signature:
+   * "std::tuple<Args...> function(Args...)"
+   * where returned tuple will be unpacked and passed to child's
+   * processPayload()
    *
    * @param args Various arguments list to be passed to user function
    */
-  template <typename F, typename... Args>
-  void process(const F& function, Args&&... args) {
-    const auto& target_childs = function(payload_, std::forward<Args>(args)...);
+  template <typename ProcessFunc, typename InterpolateFunc, typename... Args>
+  void processPayload(const ProcessFunc& process_func,
+                      const InterpolateFunc& interpolate_func, Args&&... args) {
+    const auto& target_childs = std::invoke(process_func, payload_, args...);
     std::for_each(
         target_childs.begin(), target_childs.end(),
         [&](const auto& child_index) {
           if (child_index < childs_.size() && childs_.at(child_index)) {
-            childs_.at(child_index)
-                ->process(function, std::forward<Args>(args)...);
+            processChildNodePayload(
+                childs_.at(child_index), process_func, interpolate_func,
+                std::tuple(std::invoke(interpolate_func, child_index, args...)),
+                std::make_index_sequence<sizeof...(Args)>{});
+          }
+        });
+  }
+
+  /**
+   * @brief Processes node's childs recursively with given user function.
+   * Uses DFS pre-order algorithm with selective child nodes processing
+   * (user function returns scope of child nodes to be processed on next step)
+   *
+   * @param process_func Function to be applied to nodes recursively.
+   * Function is expected to have following signature:
+   * "Container function(ChildsContainer&, ...)"
+   * where "Container" type is STL container of child nodes indexes
+   *
+   * @param interpolate_func Function to be applied to arguments list
+   * before each child processing for modifying arguments according to
+   * child's index (arguments interpolation).
+   * Function is expected to have following signature:
+   * "std::tuple<Args...> function(Args...)"
+   * where returned tuple will be unpacked and passed to child's
+   * processChilds()
+   *
+   * @param args Various arguments list to be passed to user function
+   */
+  template <typename ProcessFunc, typename InterpolateFunc, typename... Args>
+  void processChilds(const ProcessFunc& process_func,
+                     const InterpolateFunc& interpolate_func, Args&&... args) {
+    const auto& target_childs = std::invoke(process_func, childs_, args...);
+    std::for_each(
+        target_childs.begin(), target_childs.end(),
+        [&](const auto& child_index) {
+          if (child_index < childs_.size() && childs_.at(child_index)) {
+            processChildNodeChilds(
+                childs_.at(child_index), process_func, interpolate_func,
+                std::tuple(std::invoke(interpolate_func, child_index, args...)),
+                std::make_index_sequence<sizeof...(Args)>{});
           }
         });
   }
 
  private:
-  PayloadType payload_;
-  ChildNodesContainerType childs_;
+  /**
+   * @brief Invokes processPayload() method for certain child node
+   * @param child_node Child node for which function call will be performed
+   * @param process_func Process function to be passed to function call
+   * @param interpolate_func Interpolate function to be passed to function call
+   * @param tuple Tuple of arguments to be unpacked and passed to function call
+   */
+  template <typename ChildNode, typename ProcessFunc, typename InterpolateFunc,
+            typename Tuple, auto... I>
+  static void processChildNodePayload(const ChildNode& child_node,
+                                      const ProcessFunc& process_func,
+                                      const InterpolateFunc& interpolate_func,
+                                      Tuple&& tuple,
+                                      std::index_sequence<I...>) {
+    child_node->processPayload(process_func, interpolate_func,
+                               std::get<I>(std::forward<Tuple>(tuple))...);
+  }
+
+  /**
+   * @brief Invokes processChilds() method for certain child node
+   * @param child_node Child node for which function call will be performed
+   * @param process_func Process function to be passed to function call
+   * @param interpolate_func Interpolate function to be passed to function call
+   * @param tuple Tuple of arguments to be unpacked and passed to function call
+   */
+  template <typename ChildNode, typename ProcessFunc, typename InterpolateFunc,
+            typename Tuple, auto... I>
+  static void processChildNodeChilds(const ChildNode& child_node,
+                                     const ProcessFunc& process_func,
+                                     const InterpolateFunc& interpolate_func,
+                                     Tuple&& tuple, std::index_sequence<I...>) {
+    child_node->processChilds(process_func, interpolate_func,
+                              std::get<I>(std::forward<Tuple>(tuple))...);
+  }
+
+ private:
+  Payload payload_;
+  ChildsContainer childs_;
 };
 
 }  // namespace node
