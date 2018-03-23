@@ -18,34 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-include_directories(
-  googletest/googletest/include
-  googletest/googlemock/include
-)
+cmake_minimum_required(VERSION 2.8.7)
 
-set(GEOMETRY_SOURCES
-  src/geometry_test.cc
-)
+project(october)
 
-set(NODE_SOURCES
-  src/node_test.cc
-)
+set(GCC_COVERAGE_COMPILE_FLAGS "-fno-exceptions -O2 -Wall -Wextra -Werror -std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_COVERAGE_COMPILE_FLAGS}")
 
-set(LIBRARIES
-  gtest
-  gtest_main
-  gmock
-  gmock_main
-  pthread
-)
+include_directories(include)
 
-add_executable(geometry_test ${GEOMETRY_SOURCES})
-target_link_libraries(geometry_test ${LIBRARIES})
+enable_testing()
 
-add_executable(node_test ${NODE_SOURCES})
-target_link_libraries(node_test ${LIBRARIES})
-
-add_test(NAME geometry COMMAND geometry_test)
-add_test(NAME node COMMAND node_test)
-
-add_subdirectory(googletest)
+add_subdirectory(test)
