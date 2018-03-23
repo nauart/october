@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Artem Nosach
+# Copyright (c) 2018 Artem Nosach
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 2.8.7)
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing")
 
-project(october)
-
-set(OCTOBER_COMPILE_FLAGS "-fno-exceptions -O2 -Wall -Wextra -Werror -Wpedantic -std=c++17")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OCTOBER_COMPILE_FLAGS}")
-
-include_directories(include)
-
-enable_testing()
-
-add_subdirectory(test)
 add_subdirectory(benchmark)
