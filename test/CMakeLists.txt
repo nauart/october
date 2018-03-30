@@ -31,6 +31,10 @@ set(NODE_SOURCES
   src/node_test.cc
 )
 
+set(TREE_SOURCES
+  src/tree_test.cc
+)
+
 set(LIBRARIES
   gtest
   gtest_main
@@ -45,7 +49,11 @@ target_link_libraries(geometry_test ${LIBRARIES})
 add_executable(node_test ${NODE_SOURCES})
 target_link_libraries(node_test ${LIBRARIES})
 
+add_executable(tree_test ${TREE_SOURCES})
+target_link_libraries(tree_test ${LIBRARIES})
+
 add_test(NAME geometry COMMAND geometry_test)
 add_test(NAME node COMMAND node_test)
+add_test(NAME tree COMMAND tree_test)
 
 add_subdirectory(googletest)
