@@ -67,16 +67,16 @@ static const std::vector<ChildsIndexesData> childs_to_process_indexes_data = {
 
 class NodeMock;
 
-using PayloadTestData = float;
-using ChildsTestData = std::array<std::unique_ptr<NodeMock>, 8u>;
-using ParameterTestData = float;
+using PayloadTestData = std::size_t;
+using ChildsTestData = std::array<std::shared_ptr<NodeMock>, 8u>;
+using ParameterTestData = std::size_t;
 
 using ProcessPayloadFunc = std::function<ChildsIndexesData(
     const PayloadTestData&, ParameterTestData, const ParameterTestData&)>;
 using ProcessChildsFunc = std::function<ChildsIndexesData(
     const ChildsTestData&, ParameterTestData, const ParameterTestData&)>;
 using InterpolateFunc =
-    std::function<std::tuple<ParameterTestData, const ParameterTestData&>(
+    std::function<std::tuple<ParameterTestData, ParameterTestData>(
         std::size_t, ParameterTestData, const ParameterTestData&)>;
 
 class FunctionMock {
@@ -97,122 +97,118 @@ class FunctionMock {
 class NodeMock {
  public:
   MOCK_CONST_METHOD4(processPayload,
-                     void(ProcessPayloadFunc, InterpolateFunc,
+                     void(const ProcessPayloadFunc&, const InterpolateFunc&,
                           ParameterTestData, const ParameterTestData&));
   MOCK_CONST_METHOD4(processChilds,
-                     void(ProcessChildsFunc, InterpolateFunc, ParameterTestData,
-                          const ParameterTestData&));
+                     void(const ProcessChildsFunc&, const InterpolateFunc&,
+                          ParameterTestData, const ParameterTestData&));
 };
 
 class NodeTest : public ::testing::TestWithParam<
                      std::tuple<ChildsIndexesData, ChildsIndexesData> > {
  protected:
   void SetUp() {
-    using namespace std::placeholders;
-
-    process_payload_func_ = std::bind(&FunctionMock::processPayloadFunc,
-                                      &function_mock_, _1, _2, _3);
-    process_childs_func_ = std::bind(&FunctionMock::processChildsFunc,
-                                     &function_mock_, _1, _2, _3);
-    interpolate_func_ =
-        std::bind(&FunctionMock::interpolateFunc, &function_mock_, _1, _2, _3);
+    const ChildsIndexesData& childs_indexes = std::get<0>(GetParam());
+    for (std::size_t i = 0u; i < childs_indexes.size(); ++i) {
+      if (0u != childs_indexes.at(i)) {
+        childs_.at(i) = std::make_shared<NodeMock>();
+      }
+    }
   }
 
  protected:
   FunctionMock function_mock_;
-  ProcessPayloadFunc process_payload_func_;
-  ProcessChildsFunc process_childs_func_;
-  InterpolateFunc interpolate_func_;
+  const ProcessPayloadFunc process_payload_func_ = std::bind(
+      &FunctionMock::processPayloadFunc, &function_mock_, std::placeholders::_1,
+      std::placeholders::_2, std::placeholders::_3);
+  const ProcessChildsFunc process_childs_func_ = std::bind(
+      &FunctionMock::processChildsFunc, &function_mock_, std::placeholders::_1,
+      std::placeholders::_2, std::placeholders::_3);
+  const InterpolateFunc interpolate_func_ = std::bind(
+      &FunctionMock::interpolateFunc, &function_mock_, std::placeholders::_1,
+      std::placeholders::_2, std::placeholders::_3);
+
+  ChildsTestData childs_;
 };
 
 TEST_P(NodeTest, ProcessRootPayload_Success) {
   using namespace ::testing;
 
-  Node<PayloadTestData, ChildsTestData> node((PayloadTestData(0.0f)),
-                                             (ChildsTestData()));
-
-  EXPECT_CALL(function_mock_, processPayloadFunc(0.0f, 1.0f, 2.0f));
+  EXPECT_CALL(function_mock_, processPayloadFunc(0u, 1u, 2u));
   EXPECT_CALL(function_mock_, processChildsFunc(_, _, _)).Times(0);
   EXPECT_CALL(function_mock_, interpolateFunc(_, _, _)).Times(0);
 
-  node.processPayload(process_payload_func_, interpolate_func_, 1.0f, 2.0f);
+  Node<PayloadTestData, ChildsTestData> node(PayloadTestData(0u), childs_);
+  node.processPayload(process_payload_func_, interpolate_func_, 1u, 2u);
 }
 
 TEST_P(NodeTest, ProcessRootChilds_Success) {
   using namespace ::testing;
 
-  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
-                                             (ChildsTestData()));
-
-  EXPECT_CALL(function_mock_, processChildsFunc(_, 1.0f, 2.0f));
+  EXPECT_CALL(function_mock_, processChildsFunc(ContainerEq(childs_), 1u, 2u));
   EXPECT_CALL(function_mock_, processPayloadFunc(_, _, _)).Times(0);
   EXPECT_CALL(function_mock_, interpolateFunc(_, _, _)).Times(0);
 
-  node.processChilds(process_childs_func_, interpolate_func_, 1.0f, 2.0f);
+  Node<PayloadTestData, ChildsTestData> node(PayloadTestData(), childs_);
+  node.processChilds(process_childs_func_, interpolate_func_, 1u, 2u);
 }
 
 TEST_P(NodeTest, ProcessChildNodesPayload_Success) {
   using namespace ::testing;
 
-  ChildsTestData childs;
-  ChildsIndexesData childs_indexes = std::get<0>(GetParam());
-  ChildsIndexesData childs_to_process_indexes = std::get<1>(GetParam());
-
-  for (std::size_t i = 0; i < childs_indexes.size(); ++i) {
-    if (0 != childs_indexes.at(i)) {
-      childs.at(i) = std::make_unique<NodeMock>();
+  const ChildsIndexesData& childs_to_process_indexes = std::get<1>(GetParam());
+  for (std::size_t i = 0u; i < childs_.size(); ++i) {
+    if (childs_.at(i)) {
       if (childs_to_process_indexes.end() !=
           std::find(childs_to_process_indexes.begin(),
                     childs_to_process_indexes.end(), i)) {
-        EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, 2.0f, 1.0f));
+        EXPECT_CALL(*childs_.at(i).get(),
+                    processPayload(Ref(process_payload_func_),
+                                   Ref(interpolate_func_), 2u, 1u));
       } else {
-        EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, _, _)).Times(0);
+        EXPECT_CALL(*childs_.at(i).get(), processPayload(_, _, _, _)).Times(0);
       }
-      EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, _, _)).Times(0);
+      EXPECT_CALL(*childs_.at(i).get(), processChilds(_, _, _, _)).Times(0);
     }
   }
 
-  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
-                                             std::move(childs));
-
-  EXPECT_CALL(function_mock_, processPayloadFunc(_, _, _))
+  EXPECT_CALL(function_mock_, processPayloadFunc(0u, 1u, 2u))
       .WillOnce(Return(childs_to_process_indexes));
-  EXPECT_CALL(function_mock_, interpolateFunc(_, 1.0f, 2.0f))
-      .WillRepeatedly(Return(std::make_tuple(2.0f, 1.0f)));
+  EXPECT_CALL(function_mock_, interpolateFunc(_, 1u, 2u))
+      .WillRepeatedly(Return(
+          std::make_tuple(ParameterTestData(2u), ParameterTestData(1u))));
 
-  node.processPayload(process_payload_func_, interpolate_func_, 1.0f, 2.0f);
+  Node<PayloadTestData, ChildsTestData> node(PayloadTestData(0u), childs_);
+  node.processPayload(process_payload_func_, interpolate_func_, 1u, 2u);
 }
 
 TEST_P(NodeTest, ProcessChildNodesChilds_Success) {
   using namespace ::testing;
 
-  ChildsTestData childs;
-  ChildsIndexesData childs_indexes = std::get<0>(GetParam());
-  ChildsIndexesData childs_to_process_indexes = std::get<1>(GetParam());
-
-  for (std::size_t i = 0; i < childs_indexes.size(); ++i) {
-    if (0 != childs_indexes.at(i)) {
-      childs.at(i) = std::make_unique<NodeMock>();
+  const ChildsIndexesData& childs_to_process_indexes = std::get<1>(GetParam());
+  for (std::size_t i = 0u; i < childs_.size(); ++i) {
+    if (childs_.at(i)) {
       if (childs_to_process_indexes.end() !=
           std::find(childs_to_process_indexes.begin(),
                     childs_to_process_indexes.end(), i)) {
-        EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, 2.0f, 1.0f));
+        EXPECT_CALL(*childs_.at(i).get(),
+                    processChilds(Ref(process_childs_func_),
+                                  Ref(interpolate_func_), 2u, 1u));
       } else {
-        EXPECT_CALL(*childs.at(i).get(), processChilds(_, _, _, _)).Times(0);
+        EXPECT_CALL(*childs_.at(i).get(), processChilds(_, _, _, _)).Times(0);
       }
-      EXPECT_CALL(*childs.at(i).get(), processPayload(_, _, _, _)).Times(0);
+      EXPECT_CALL(*childs_.at(i).get(), processPayload(_, _, _, _)).Times(0);
     }
   }
 
-  Node<PayloadTestData, ChildsTestData> node((PayloadTestData()),
-                                             std::move(childs));
-
-  EXPECT_CALL(function_mock_, processChildsFunc(_, _, _))
+  EXPECT_CALL(function_mock_, processChildsFunc(ContainerEq(childs_), 1u, 2u))
       .WillOnce(Return(childs_to_process_indexes));
-  EXPECT_CALL(function_mock_, interpolateFunc(_, 1.0f, 2.0f))
-      .WillRepeatedly(Return(std::make_tuple(2.0f, 1.0f)));
+  EXPECT_CALL(function_mock_, interpolateFunc(_, 1u, 2u))
+      .WillRepeatedly(Return(
+          std::make_tuple(ParameterTestData(2u), ParameterTestData(1u))));
 
-  node.processChilds(process_childs_func_, interpolate_func_, 1.0f, 2.0f);
+  Node<PayloadTestData, ChildsTestData> node(PayloadTestData(), childs_);
+  node.processChilds(process_childs_func_, interpolate_func_, 1u, 2u);
 }
 
 INSTANTIATE_TEST_CASE_P(

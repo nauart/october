@@ -76,7 +76,7 @@ class Node {
             processChildNodePayload(
                 childs_.at(child_index), process_func, interpolate_func,
                 std::tuple(std::invoke(interpolate_func, child_index, args...)),
-                std::make_index_sequence<sizeof...(Args)>{});
+                std::index_sequence_for<Args...>{});
           }
         });
   }
@@ -112,7 +112,7 @@ class Node {
             processChildNodeChilds(
                 childs_.at(child_index), process_func, interpolate_func,
                 std::tuple(std::invoke(interpolate_func, child_index, args...)),
-                std::make_index_sequence<sizeof...(Args)>{});
+                std::index_sequence_for<Args...>{});
           }
         });
   }
