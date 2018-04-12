@@ -26,6 +26,10 @@ set(GEOMETRY_SOURCES
   src/geometry_benchmark.cc
 )
 
+set(NODE_SOURCES
+  src/node_benchmark.cc
+)
+
 set(LIBRARIES
   benchmark
   pthread
@@ -34,7 +38,13 @@ set(LIBRARIES
 add_executable(geometry_benchmark ${GEOMETRY_SOURCES})
 target_link_libraries(geometry_benchmark ${LIBRARIES})
 
-add_custom_target(benchmark_run COMMAND ./geometry_benchmark WORKING_DIRECTORY ./)
+add_executable(node_benchmark ${NODE_SOURCES})
+target_link_libraries(node_benchmark ${LIBRARIES})
+
+add_custom_target(benchmark_run
+                  COMMAND ./geometry_benchmark
+                  COMMAND ./node_benchmark
+                  WORKING_DIRECTORY ./)
 
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing")
 
