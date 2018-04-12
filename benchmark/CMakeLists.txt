@@ -18,6 +18,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+include_directories(
+  benchmark/include
+)
+
+set(GEOMETRY_SOURCES
+  src/geometry_benchmark.cc
+)
+
+set(LIBRARIES
+  benchmark
+  pthread
+)
+
+add_executable(geometry_benchmark ${GEOMETRY_SOURCES})
+target_link_libraries(geometry_benchmark ${LIBRARIES})
+
+add_custom_target(benchmark_run COMMAND ./geometry_benchmark WORKING_DIRECTORY ./)
+
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing")
 
 add_subdirectory(benchmark)
