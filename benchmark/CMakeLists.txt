@@ -30,6 +30,10 @@ set(NODE_SOURCES
   src/node_benchmark.cc
 )
 
+set(TREE_SOURCES
+  src/tree_benchmark.cc
+)
+
 set(LIBRARIES
   benchmark
   pthread
@@ -41,9 +45,13 @@ target_link_libraries(geometry_benchmark ${LIBRARIES})
 add_executable(node_benchmark ${NODE_SOURCES})
 target_link_libraries(node_benchmark ${LIBRARIES})
 
+add_executable(tree_benchmark ${TREE_SOURCES})
+target_link_libraries(tree_benchmark ${LIBRARIES})
+
 add_custom_target(benchmark_run
                   COMMAND ./geometry_benchmark
                   COMMAND ./node_benchmark
+                  COMMAND ./tree_benchmark
                   WORKING_DIRECTORY ./)
 
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing")
