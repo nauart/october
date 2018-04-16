@@ -20,4 +20,4 @@ script:
   - bash -e ./tools/check_code.sh
   - mkdir build
   - cd build
-  - cmake ../ && make && make test
+  - cmake ../ && make && make test && make benchmark_run

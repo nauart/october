@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-FILES=$(find ./ -iname build -prune -o -iname googletest -prune -o \( -iname *.h -o -iname *.c -o -iname *.cc -o -iname *.hpp -o -iname *.cpp \) -type f -print)
+FILES=$(find ./include ./test/src ./benchmark/src -iname *.h -o -iname *.c -o -iname *.cc -o -iname *.hpp -o -iname *.cpp -type f)
 
 if [ "$1" = "--fix" ]
 then

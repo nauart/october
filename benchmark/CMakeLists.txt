@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Artem Nosach
+# Copyright (c) 2018 Artem Nosach
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +18,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-cmake_minimum_required(VERSION 2.8.7)
+include_directories(
+  benchmark/include
+)
 
-project(october)
+set(GEOMETRY_SOURCES
+  src/geometry_benchmark.cc
+)
 
-set(OCTOBER_COMPILE_FLAGS "-fno-exceptions -O2 -Wall -Wextra -Werror -Wpedantic -std=c++17")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OCTOBER_COMPILE_FLAGS}")
+set(NODE_SOURCES
+  src/node_benchmark.cc
+)
 
-include_directories(include)
+set(TREE_SOURCES
+  src/tree_benchmark.cc
+)
 
-enable_testing()
+set(LIBRARIES
+  benchmark
+  pthread
+)
 
-add_subdirectory(test)
+add_executable(geometry_benchmark ${GEOMETRY_SOURCES})
+target_link_libraries(geometry_benchmark ${LIBRARIES})
+
+add_executable(node_benchmark ${NODE_SOURCES})
+target_link_libraries(node_benchmark ${LIBRARIES})
+
+add_executable(tree_benchmark ${TREE_SOURCES})
+target_link_libraries(tree_benchmark ${LIBRARIES})
+
+add_custom_target(benchmark_run
+                  COMMAND ./geometry_benchmark
+                  COMMAND ./node_benchmark
+                  COMMAND ./tree_benchmark
+                  WORKING_DIRECTORY ./)
+
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "Disable benchmark testing")
+
 add_subdirectory(benchmark)
