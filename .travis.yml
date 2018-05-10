@@ -18,6 +18,8 @@ before_script:
 script:
   - bash -e ./tools/check_style.sh
   - bash -e ./tools/check_code.sh
-  - mkdir build
-  - cd build
-  - cmake ../ && make && make test && make benchmark_run
+  - mkdir build && cd build
+  - cmake ../ && make
+  - make test
+  - bash <(curl -s https://codecov.io/bash) -X coveragepy
+  - make benchmark_run
