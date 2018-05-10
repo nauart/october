@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+set(OCTOBER_TEST_COMPILE_FLAGS "--coverage")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OCTOBER_TEST_COMPILE_FLAGS}")
+
 include_directories(
   googletest/googletest/include
   googletest/googlemock/include
