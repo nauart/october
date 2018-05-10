@@ -28,7 +28,7 @@
 #include "tree.h"
 
 namespace october {
-namespace node {
+namespace tree {
 namespace benchmark {
 
 class TreeBenchmark : public ::benchmark::Fixture {};
@@ -90,7 +90,7 @@ BENCHMARK_F(TreeBenchmark, processNodesBenchmark)
 }
 
 }  // namespace benchmark
-}  // namespace node
+}  // namespace tree
 }  // namespace october
 
 BENCHMARK_MAIN();
