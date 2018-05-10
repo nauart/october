@@ -1,0 +1,7 @@
+ignore:
+  - test
+  - benchmark
+
+comment:
+  layout: header, changes, diff
+  behavior: default
