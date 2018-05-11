@@ -98,7 +98,7 @@ class Tracer {
     };
   }
 
-  /*void predict() {
+  /*static void predictChild() {
     if (intersect.x < shape_half.x) {
       // 0, 2, 4, 6
     } else {
