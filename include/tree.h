@@ -29,6 +29,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include "node.h"
 
@@ -98,7 +99,7 @@ class Tree {
           const auto& target_childs = std::invoke(insert_func, shape, args...);
           std::for_each(
               target_childs.begin(), target_childs.end(),
-              [&childs](const auto& child_index) {
+              [&childs](const std::size_t& child_index) {
                 if (child_index < childs.size() && !childs.at(child_index)) {
                   childs.at(child_index) = std::make_unique<Node>(
                       Payload(), std::array<std::unique_ptr<Node>, N>());
@@ -106,7 +107,7 @@ class Tree {
               });
           return target_childs;
         },
-        [&shape_func](const auto& child_index, const Shape& shape,
+        [&shape_func](const std::size_t& child_index, const Shape& shape,
                       Args... args) {
           return std::tuple<Shape, Args&&...>(shape_func(child_index, shape),
                                               std::forward<Args>(args)...);
@@ -138,7 +139,7 @@ class Tree {
           auto target_childs = std::invoke(remove_func, shape, args...);
           std::for_each(
               target_childs.begin(), target_childs.end(),
-              [&childs](const auto& child_index) {
+              [&childs](const std::size_t& child_index) {
                 if (child_index < childs.size() && childs.at(child_index)) {
                   childs.at(child_index).reset();
                 }
@@ -151,7 +152,7 @@ class Tree {
                               std::inserter(res, res.begin()));
           return res;
         },
-        [&shape_func](const auto& child_index, const Shape& shape,
+        [&shape_func](const std::size_t& child_index, const Shape& shape,
                       Args... args) {
           return std::tuple<Shape, Args&&...>(shape_func(child_index, shape),
                                               std::forward<Args>(args)...);
@@ -177,7 +178,7 @@ class Tree {
   void processNodes(const ProcessFunc& process_func,
                     const ShapeFunc& shape_func, Args&&... args) {
     root_.processPayload(process_func,
-                         [&shape_func](const auto& child_index,
+                         [&shape_func](const std::size_t& child_index,
                                        const Shape& shape, Args... args) {
                            return std::tuple<Shape, Args&&...>(
                                shape_func(child_index, shape),

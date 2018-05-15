@@ -23,7 +23,6 @@
 #include <array>
 #include <cstddef>
 #include <memory>
-#include <vector>
 
 #include "benchmark/benchmark.h"
 
@@ -54,7 +53,7 @@ BENCHMARK_F(NodeBenchmark, processPayloadBenchmark)(::benchmark::State& state) {
   for (auto _ : state) {
     node.processPayload(
         [](const std::size_t&, const std::size_t&) {
-          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+          return std::array<std::size_t, 8u>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
         },
         [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
   }
@@ -78,7 +77,7 @@ BENCHMARK_F(NodeBenchmark, processChildsBenchmark)(::benchmark::State& state) {
   for (auto _ : state) {
     node.processChilds(
         [](const TestChildsArray&, const std::size_t&) {
-          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+          return std::array<std::size_t, 8u>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
         },
         [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
   }
