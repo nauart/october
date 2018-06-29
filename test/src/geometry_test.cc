@@ -89,7 +89,14 @@ static const std::vector<IntersectionTestData<float> > intersection_data = {
     {{0.0f, 0.0f,    -1.0f}, normalizeVector<float>({1.0f, 1.0f,  1.0f})},  // intersect ray
     {{1.0f, 1.0f,     0.0f}, normalizeVector<float>({1.0f, 1.0f, -1.0f})},  // reflect ray
     std::sqrt(3.0f)                                                         // dist
-  }
+  },
+  /*{
+    {{0.0f,  0.0f, 0.0f},                        {2.0f, 2.0f,  2.0f}},   // shape
+    {{0.5f, -0.5f, 2.5f}, normalizeVector<float>({0.0f, 1.0f,  1.0f})},  // not intersect ray
+    {{0.5f, -0.5f, 2.5f}, normalizeVector<float>({0.0f, 1.0f, -1.0f})},  // intersect ray
+    {{0.5f, 0.0f, 2.0f}, normalizeVector<float>({0.0f, 1.0f,  1.0f})},  // reflect ray
+    1 / std::sqrt(2.0f)                                                 // dist
+  }*/
 };
 // clang-format on
 
@@ -114,6 +121,19 @@ TEST_P(IntersectionTest, RayShapeIntersection_Fail) {
                                           GetParam().shape_, reflect_ray);
 
   EXPECT_TRUE(isNegative(dist));
+
+  EXPECT_TRUE(isZero(float(std::cos(M_PI / 2))));
+  EXPECT_TRUE(isZero(float(std::sin(M_PI))));
+
+  EXPECT_FALSE(isPositive(float(std::cos(M_PI / 2))));
+  EXPECT_FALSE(isPositive(float(std::sin(M_PI))));
+
+  EXPECT_FALSE(isNegative(float(std::cos(M_PI / 2))));
+  EXPECT_FALSE(isNegative(float(std::sin(M_PI))));
+
+  EXPECT_TRUE(isEqual(float(std::cos(M_PI / 2)), float(std::sin(M_PI))));
+
+  //sum
 }
 
 INSTANTIATE_TEST_CASE_P(IntersectionDataInstantiation, IntersectionTest,

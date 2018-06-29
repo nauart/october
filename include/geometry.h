@@ -106,15 +106,42 @@ bool isZero(const T& value) {
 }
 
 /**
+ * @brief Checks if first value is more than second
+ * (should not be used for zero-comparison, please use isPositive())
+ * @param a First value
+ * @param b Second value
+ * @return True if first value is more than second, false otherwise
+ */
+template <typename T>
+bool isMore(const T& a, const T& b) {
+  return isPositive(a - b);
+}
+
+/**
+ * @brief Checks if first value is less than second
+ * (should not be used for zero-comparison, please use isNegative())
+ * @param a First value
+ * @param b Second value
+ * @return True if first value is less than second, false otherwise
+ */
+template <typename T>
+bool isLess(const T& a, const T& b) {
+  return isNegative(a - b);
+}
+
+/**
  * @brief Checks if two values are equal
+ * (should not be used for zero-comparison, please use isZero())
  * @param a First value
  * @param b Second value
  * @return True if given values are equal, false otherwise
  */
 template <typename T>
 bool isEqual(const T& a, const T& b) {
+  printf("%1.25f %1.25f\n", a, b);
+  printf("%1.25f %1.25f %1.25f \n", float(std::abs(a - b)), std::numeric_limits<T>::epsilon(), std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon());
   return std::abs(a - b) <=
-         std::numeric_limits<T>::epsilon() * std::max(std::abs(a), std::abs(b));
+         std::numeric_limits<T>::epsilon() * std::max(std::max(std::abs(a), std::abs(b)), std::numeric_limits<T>::epsilon());
 }
 
 /**
@@ -137,7 +164,7 @@ bool isVectorEqual(const Vec3<T>& a, const Vec3<T>& b) {
  */
 template <typename T>
 bool inRange(const T& value, const T& low, const T& high) {
-  return value >= low && value <= high;
+  return !isLess(value, low) && !isMore(value, high);
 }
 
 /**
