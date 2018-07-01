@@ -82,7 +82,7 @@ T getMax() {
  */
 template <typename T>
 bool isPositive(const T& value) {
-  return value > std::numeric_limits<T>::epsilon();
+  return value > std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon();
 }
 
 /**
@@ -92,7 +92,7 @@ bool isPositive(const T& value) {
  */
 template <typename T>
 bool isNegative(const T& value) {
-  return value < -std::numeric_limits<T>::epsilon();
+  return value < -std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon();
 }
 
 /**
@@ -138,10 +138,10 @@ bool isLess(const T& a, const T& b) {
  */
 template <typename T>
 bool isEqual(const T& a, const T& b) {
-  printf("%1.25f %1.25f\n", a, b);
-  printf("%1.25f %1.25f %1.25f \n", float(std::abs(a - b)), std::numeric_limits<T>::epsilon(), std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon());
+  //printf("%1.25f %1.25f\n", a, b);
+  //printf("%1.25f %1.25f %1.25f \n", float(std::abs(a - b)), std::numeric_limits<T>::epsilon(), std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon());
   return std::abs(a - b) <=
-         std::numeric_limits<T>::epsilon() * std::max(std::max(std::abs(a), std::abs(b)), std::numeric_limits<T>::epsilon());
+         std::numeric_limits<T>::epsilon() * (std::max(std::max(std::abs(a), std::abs(b)), std::numeric_limits<T>::epsilon()));
 }
 
 /**

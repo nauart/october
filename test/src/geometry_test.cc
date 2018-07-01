@@ -100,6 +100,86 @@ static const std::vector<IntersectionTestData<float> > intersection_data = {
 };
 // clang-format on
 
+TEST(MathTest, ComparisonZero_Success) {
+  const float first = std::sin(M_PI);
+  const float second = std::cos(M_PI / 2.0f);
+
+  EXPECT_TRUE(isZero(first));
+  EXPECT_TRUE(isZero(second));
+
+  EXPECT_FALSE(isPositive(first));
+  EXPECT_FALSE(isPositive(second));
+
+  EXPECT_FALSE(isNegative(first));
+  EXPECT_FALSE(isNegative(second));
+
+  EXPECT_TRUE(isEqual(0.0f, first));
+  EXPECT_TRUE(isEqual(0.0f, second));
+  EXPECT_TRUE(isEqual(first, second));
+}
+
+TEST(MathTest, ComparisonZero_Fail) {
+  const float first = std::pow(10, -12);
+  const float second = -std::pow(10, -12);
+
+  EXPECT_FALSE(isZero(first));
+  EXPECT_FALSE(isZero(second));
+
+  EXPECT_TRUE(isPositive(first));
+  EXPECT_FALSE(isPositive(second));
+
+  EXPECT_FALSE(isNegative(first));
+  EXPECT_TRUE(isNegative(second));
+
+  EXPECT_FALSE(isEqual(0.0f, first));
+  EXPECT_FALSE(isEqual(0.0f, second));
+  EXPECT_FALSE(isEqual(first, second));
+
+  //nextafter?
+}
+
+//999999999999999939709166371603178586112.0000000000000000000000000
+//999999999999999788593438919774531747840.0000000000000000000000000
+               //2
+       //40564816789451701618636153159680.0000000000000000000000000
+
+//340282346638528859811704183484516925440.0000000000000000000000000
+//340282326356119256160033759537265639424.0000000000000000000000000
+       //2
+       //20282408394725850809318076579840.0000000000000000000000000
+
+
+TEST(MathTest, ComparisonMax_Success) {
+  const float first = std::nextafter(getMax<float>(), getMin<float>());
+  const float second = -std::pow(10, 30);
+
+  printf("%1.25f %1.25f %1.25f\n\n", getMax<float>(), getMax<float>()- std::nextafter(getMax<float>(), getMin<float>()),
+         (getMax<float>() *  std::numeric_limits<float>::epsilon()));
+
+  EXPECT_TRUE(isPositive(first));
+  EXPECT_FALSE(isPositive(second));
+
+  EXPECT_FALSE(isNegative(first));
+  EXPECT_TRUE(isNegative(second));
+
+  EXPECT_TRUE(isEqual(getMax<float>(), first));
+  //EXPECT_TRUE(isEqual(getMin<float>(), second));
+}
+
+/*TEST(MathTest, ComparisonMax_Fail) {
+  const float first =  std::nextafter(getMax<float>() / 2.0f, getMin<float>());
+  const float second = std::nextafter(getMin<float>() / 2.0f, getMax<float>());
+
+  EXPECT_TRUE(isPositive(first));
+  EXPECT_FALSE(isPositive(second));
+
+  EXPECT_FALSE(isNegative(first));
+  EXPECT_TRUE(isNegative(second));
+
+  EXPECT_FALSE(isEqual(getMax<float>(), first));
+  EXPECT_FALSE(isEqual(getMin<float>(), second));
+}*/
+
 class IntersectionTest
     : public ::testing::TestWithParam<IntersectionTestData<float> > {};
 
@@ -121,19 +201,6 @@ TEST_P(IntersectionTest, RayShapeIntersection_Fail) {
                                           GetParam().shape_, reflect_ray);
 
   EXPECT_TRUE(isNegative(dist));
-
-  EXPECT_TRUE(isZero(float(std::cos(M_PI / 2))));
-  EXPECT_TRUE(isZero(float(std::sin(M_PI))));
-
-  EXPECT_FALSE(isPositive(float(std::cos(M_PI / 2))));
-  EXPECT_FALSE(isPositive(float(std::sin(M_PI))));
-
-  EXPECT_FALSE(isNegative(float(std::cos(M_PI / 2))));
-  EXPECT_FALSE(isNegative(float(std::sin(M_PI))));
-
-  EXPECT_TRUE(isEqual(float(std::cos(M_PI / 2)), float(std::sin(M_PI))));
-
-  //sum
 }
 
 INSTANTIATE_TEST_CASE_P(IntersectionDataInstantiation, IntersectionTest,
