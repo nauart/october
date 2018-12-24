@@ -25,20 +25,16 @@
 #include "gtest/gtest.h"
 
 #include "geometry.h"
+#include "geometry_data.h"
 
 namespace october {
 namespace geometry {
 namespace test {
 
-template <typename T>
-struct IntersectionTestData {
-  Shape<T> shape_;
-  Ray<T> not_intersect_ray_;
-  Ray<T> intersect_ray_;
-  Ray<T> reflect_ray_;
-  T dist_;
+class IntersectionTest : public ::testing::TestWithParam<IntersectionTestData> {
 };
 
+<<<<<<< HEAD
 // clang-format off
 static const std::vector<IntersectionTestData<float> > intersection_data = {
   {
@@ -183,13 +179,15 @@ TEST(MathTest, ComparisonMax_Success) {
 class IntersectionTest
     : public ::testing::TestWithParam<IntersectionTestData<float> > {};
 
+=======
+>>>>>>> 232cb2a... geom
 TEST_P(IntersectionTest, RayShapeIntersection_Success) {
   Ray<float> reflect_ray;
   const float dist = rayShapeIntersection(GetParam().intersect_ray_,
                                           GetParam().shape_, reflect_ray);
 
   EXPECT_TRUE(isPositive(dist));
-  EXPECT_TRUE(isEqual(GetParam().dist_, dist));
+  EXPECT_TRUE(isEqual(GetParam().intersect_dist_, dist));
 
   EXPECT_TRUE(isVectorEqual(GetParam().reflect_ray_.pos_, reflect_ray.pos_));
   EXPECT_TRUE(isVectorEqual(GetParam().reflect_ray_.dir_, reflect_ray.dir_));
@@ -200,11 +198,11 @@ TEST_P(IntersectionTest, RayShapeIntersection_Fail) {
   const float dist = rayShapeIntersection(GetParam().not_intersect_ray_,
                                           GetParam().shape_, reflect_ray);
 
-  EXPECT_TRUE(isNegative(dist));
+  EXPECT_FALSE(isPositive(dist));
 }
 
 INSTANTIATE_TEST_CASE_P(IntersectionDataInstantiation, IntersectionTest,
-                        ::testing::ValuesIn(intersection_data));
+                        ::testing::ValuesIn(kIntersectionTestData));
 
 }  // namespace test
 }  // namespace geometry

@@ -313,14 +313,15 @@ auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
     res = dist_y;
     reflect_ray.pos_ = point_y;
     reflect_ray.dir_ = {ray.dir_.x_, -ray.dir_.y_, ray.dir_.z_};
-  }
-  if (isPositive(dist_z) && (isNegative(res) || dist_z < res)) {
+    // printf("Y!\n");
+  } else if (isPositive(dist_z) && (isNegative(res) || dist_z < res)) {
     res = dist_z;
     reflect_ray.pos_ = point_z;
     reflect_ray.dir_ = {ray.dir_.x_, ray.dir_.y_, -ray.dir_.z_};
+    // printf("Z! %f %f\n", dist_y, res);
   }
 
-  return res;
+  return res;  // ternars in general?
 }
 
 }  // namespace geometry
