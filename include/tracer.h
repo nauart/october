@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include <cmath>
+#include <algorithm>
 #include <cstddef>
-#include <limits>
-#include <utility>
+#include <iterator>
+#include <vector>
 
 #include "geometry.h"
 
@@ -38,43 +38,97 @@ namespace tracer {
 template <typename T>
 class Tracer {
  public:
+  /**
+   *
+   */
   template <typename Tree>
-  void buildTree(Tree& tree, const geometry::Ray<T>& ray, const T& power) {
+  static void buildTree(Tree& tree, const geometry::Ray<T>& ray,
+                        const T& power) {
     tree.insertNodes(
-        [](const geometry::Shape<T>& , const geometry::Ray<T>& ,
-           const T& ) { return std::vector<std::size_t>(); },
-        shapeFunc, ray, power);
-  }
-
-  template <typename Tree>
-  void burnTree(Tree& tree, const geometry::Ray<T>& ray, const T& power) {
-    tree.removeNodes(
-        [](const geometry::Shape<T>& , const geometry::Ray<T>& ,
-           const T& ) { return std::vector<std::size_t>(); },
-        shapeFunc, ray, power);
-  }
-
-  template <typename Tree, typename Payload>
-  auto castTree(Tree& tree, const geometry::Ray<T>& ray, const T& power,
-             geometry::Ray<T>& reflect_ray, Payload& reflect_payload) {
-    auto res = geometry::getMin<T>();
-    tree.processNodes(
-        [&](const Payload& payload, const geometry::Shape<T>& shape,
-            const geometry::Ray<T>& ray, const T& power) {
-          res = geometry::rayShapeIntersection(ray, shape, reflect_ray);
-          if (geometry::isPositive(res)) {
-            reflect_payload = payload;
-            // if width > power
-            // predict
-            return std::vector<std::size_t>();
+        [&tree](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
+                const T& power) {
+          geometry::Ray<T> reflect_ray;
+          const auto dist =
+              geometry::rayShapeIntersection(ray, shape, reflect_ray);
+          if (geometry::isPositive(dist) &&
+              power < shapeDiag(shape)) {  // isLess()
+            return std::vector<std::size_t>(
+                {predictChild(shape, reflect_ray.pos_, tree.nodesIndexes())});
           }
           return std::vector<std::size_t>();
         },
-        shapeFunc, ray, power);
-    return res;
+        shapeChild, ray, power);
+  }
+
+  /**
+   *
+   */
+  template <typename Tree>
+  static void burnTree(Tree& tree, const geometry::Ray<T>& ray,
+                       const T& power) {
+    tree.removeNodes(
+        [&tree](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
+                const T& power) {
+          geometry::Ray<T> reflect_ray;
+          const auto dist =
+              geometry::rayShapeIntersection(ray, shape, reflect_ray);
+          if (geometry::isPositive(dist) &&
+              power < shapeDiag(shape)) {  // isLess()
+            return std::vector<std::size_t>(
+                {predictChild(shape, reflect_ray.pos_, tree.nodesIndexes())});
+          }
+          return std::vector<std::size_t>();
+        },
+        shapeChild, ray, power);
+  }
+
+  /**
+   *
+   */
+  template <typename Tree, typename Payload>
+  static void castTree(Tree& tree, const geometry::Ray<T>& ray, const T& power,
+                       T& dist, geometry::Ray<T>& reflect_ray,
+                       Payload& reflect_payload) {
+    dist = geometry::getMin<T>();
+    tree.processNodes(
+        [&tree, &reflect_ray, &reflect_payload, &dist](
+            const Payload& payload, const geometry::Shape<T>& shape,
+            const geometry::Ray<T>& ray, const T& power) {
+          dist = geometry::rayShapeIntersection(ray, shape, reflect_ray);
+          if (geometry::isPositive(dist)) {
+            reflect_payload = payload;
+            if (power < shapeDiag(shape)) {  // isLess()
+              return std::vector<std::size_t>(tree.nodesIndexes().begin(),
+                                              tree.nodesIndexes().end());
+            }
+          }
+          return std::vector<std::size_t>();
+        },
+        shapeChild, ray, power);
   }
 
  private:
+  /**
+   * @brief shapeHalf
+   * @param shape
+   * @return
+   */
+  static geometry::Vec3<T> shapeHalf(const geometry::Shape<T>& shape) {
+    return {(shape.max_.x_ - shape.min_.x_) / 2u,
+            (shape.max_.y_ - shape.min_.y_) / 2u,
+            (shape.max_.z_ - shape.min_.z_) / 2u};
+  }
+
+  /**
+   * @brief shapeDiag
+   * @param shape
+   */
+  static auto shapeDiag(const geometry::Shape<T>& shape) {
+    return geometry::vectorLength(geometry::Vec3<T>(
+        {shape.max_.x_ - shape.min_.x_, shape.max_.y_ - shape.min_.y_,
+         shape.max_.z_ - shape.min_.z_}));
+  }
+
   /**
    * @brief shapeFunc
    * (axis-aligned box)
@@ -82,43 +136,60 @@ class Tracer {
    * @param shape
    * @return
    */
-  static geometry::Shape<T> shapeFunc(const std::size_t& child_index,
-                                      const geometry::Shape<T>& shape) {
+  static geometry::Shape<T> shapeChild(const std::size_t& child_index,
+                                       const geometry::Shape<T>& shape) {
     const std::uint8_t x = child_index % 2u;
     const std::uint8_t y = child_index % 4u / 2u;
     const std::uint8_t z = child_index % 8u / 4u;
 
-    const geometry::Vec3<T> half({(shape.max_.x_ - shape.min_.x_) / 2u,
-                                  (shape.max_.y_ - shape.min_.y_) / 2u,
-                                  (shape.max_.z_ - shape.min_.z_) / 2u});
+    const geometry::Vec3<T>& half = shapeHalf(shape);
 
     return {
-        {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_, shape.min_.z_ + z * half.z_},
-        {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_, shape.max_.z_ - (z ^ 1u) * half.z_}
-    };
+        {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_,
+         shape.min_.z_ + z * half.z_},
+        {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_,
+         shape.max_.z_ - (z ^ 1u) * half.z_}};
   }
 
-  /*static void predictChild() {
-    if (intersect.x < shape_half.x) {
-      // 0, 2, 4, 6
-    } else {
-      // 1, 3, 5, 7
-    }
+  /**
+   * @brief predictChild
+   * @param shape
+   * @param point
+   * @return
+   */
+  template <typename NodesIndexes>
+  static std::size_t predictChild(const geometry::Shape<T>& shape,
+                                  const geometry::Vec3<T>& point,
+                                  const NodesIndexes& indexes) {
+    const geometry::Vec3<T>& half = shapeHalf(shape);
 
-    if (intersect.y < shape_half.y) {
-      // 0, 1, 4, 5
-    } else {
-      // 2, 3, 6, 7
-    }
+    const std::array<std::size_t, 4u>& target_x =
+        point.x_ < half.x_ ? std::array<std::size_t, 4u>({0u, 2u, 4u, 6u})
+                           : std::array<std::size_t, 4u>({1u, 3u, 5u, 7u});
 
-    if (intersect.z < shape_half.z) {
-      // 0, 1, 2, 3
-    } else {
-      // 4, 5, 6, 7
-    }
+    const std::array<std::size_t, 4u>& target_y =
+        point.y_ < half.y_ ? std::array<std::size_t, 4u>({0u, 1u, 4u, 5u})
+                           : std::array<std::size_t, 4u>({2u, 3u, 6u, 7u});
 
-    // intersect
-  }*/
+    const std::array<std::size_t, 4u>& target_z =
+        point.z_ < half.z_ ? std::array<std::size_t, 4u>({0u, 1u, 2u, 3u})
+                           : std::array<std::size_t, 4u>({4u, 5u, 6u, 7u});
+
+    std::vector<std::size_t> res_a;
+    std::set_intersection(indexes.begin(), indexes.end(), target_x.begin(),
+                          target_x.end(), std::inserter(res_a, res_a.begin()));
+
+    std::vector<std::size_t> res_b;
+    std::set_intersection(target_y.begin(), target_y.end(), target_z.begin(),
+                          target_z.end(), std::inserter(res_b, res_b.begin()));
+
+    std::vector<std::size_t> res;
+    std::set_intersection(res_a.begin(), res_a.end(), res_b.begin(),
+                          res_b.end(), std::inserter(res, res.begin()));
+
+    // isLess()!!!
+    return res.size() > 0u ? res.at(0u) : 0u;
+  }
 };
 
 }  // namespace tracer

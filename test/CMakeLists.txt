@@ -24,6 +24,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OCTOBER_TEST_COMPILE_FLAGS}")
 include_directories(
   googletest/googletest/include
   googletest/googlemock/include
+  include
 )
 
 set(GEOMETRY_SOURCES
