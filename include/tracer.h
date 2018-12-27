@@ -45,15 +45,15 @@ class Tracer {
   static void buildTree(Tree& tree, const geometry::Ray<T>& ray,
                         const T& power) {
     tree.insertNodes(
-        [&tree](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
+        [](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
                 const T& power) {
           geometry::Ray<T> reflect_ray;
-          const auto dist =
+          const auto& dist =
               geometry::rayShapeIntersection(ray, shape, reflect_ray);
           if (geometry::isPositive(dist) &&
               power < shapeDiag(shape)) {  // isLess()
             return std::vector<std::size_t>(
-                {predictChild(shape, reflect_ray.pos_, tree.nodesIndexes())});
+                {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
           }
           return std::vector<std::size_t>();
         },
@@ -67,15 +67,15 @@ class Tracer {
   static void burnTree(Tree& tree, const geometry::Ray<T>& ray,
                        const T& power) {
     tree.removeNodes(
-        [&tree](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
+        [](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
                 const T& power) {
           geometry::Ray<T> reflect_ray;
-          const auto dist =
+          const auto& dist =
               geometry::rayShapeIntersection(ray, shape, reflect_ray);
           if (geometry::isPositive(dist) &&
               power < shapeDiag(shape)) {  // isLess()
             return std::vector<std::size_t>(
-                {predictChild(shape, reflect_ray.pos_, tree.nodesIndexes())});
+                {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
           }
           return std::vector<std::size_t>();
         },
@@ -86,20 +86,45 @@ class Tracer {
    *
    */
   template <typename Tree, typename Payload>
-  static void castTree(Tree& tree, const geometry::Ray<T>& ray, const T& power,
+  static void fillTree(Tree& tree, const geometry::Ray<T>& ray,
+                       const T& power, const Payload& new_payload) {
+    tree.processNodes(
+        [&new_payload](
+            Payload& payload, const geometry::Shape<T>& shape,
+            const geometry::Ray<T>& ray, const T& power) {
+          geometry::Ray<T> reflect_ray;
+          const auto& dist =
+              geometry::rayShapeIntersection(ray, shape, reflect_ray);
+          if (geometry::isPositive(dist)) {
+              payload = new_payload;
+              if (power < shapeDiag(shape)) {  // isLess()
+                  return std::vector<std::size_t>(
+                      {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
+              }
+          }
+          return std::vector<std::size_t>();
+        },
+        shapeChild, ray, power);
+  }
+
+  /**
+   *
+   */
+  template <typename Tree, typename Payload>
+  static void castTree(const Tree& tree, const geometry::Ray<T>& ray, const T& power,
                        T& dist, geometry::Ray<T>& reflect_ray,
                        Payload& reflect_payload) {
     dist = geometry::getMin<T>();
     tree.processNodes(
-        [&tree, &reflect_ray, &reflect_payload, &dist](
+        [&dist, &reflect_ray, &reflect_payload](
             const Payload& payload, const geometry::Shape<T>& shape,
             const geometry::Ray<T>& ray, const T& power) {
           dist = geometry::rayShapeIntersection(ray, shape, reflect_ray);
           if (geometry::isPositive(dist)) {
             reflect_payload = payload;
             if (power < shapeDiag(shape)) {  // isLess()
-              return std::vector<std::size_t>(tree.nodesIndexes().begin(),
-                                              tree.nodesIndexes().end());
+              return std::vector<std::size_t>(Tree::childsIndexes().begin(),
+                                              Tree::childsIndexes().end());
             }
           }
           return std::vector<std::size_t>();
