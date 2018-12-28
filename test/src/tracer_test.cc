@@ -57,7 +57,7 @@ class TreeMock {
   MOCK_CONST_METHOD4(processNodes,
                      void(const ProcessFunc&, const ShapeFunc&,
                           const geometry::Ray<float>&, const float&));
-  MOCK_CONST_METHOD0(nodesIndexes, const ChildsIndexesData&());
+  MOCK_CONST_METHOD0(childsIndexes, const ChildsIndexesData&());
 };
 
 class TracerTest
@@ -87,7 +87,7 @@ class TracerTest
     EXPECT_EQ(ChildsIndexesData(),
               func(data.shape_, data.intersect_ray_, data.diag_ + delta));
 
-    EXPECT_CALL(tree_mock_, nodesIndexes())
+    EXPECT_CALL(tree_mock_, childsIndexes())
         .WillOnce(ReturnRef(childs_indexes_));
     EXPECT_EQ(ChildsIndexesData({data.intersect_child_}),
               func(data.shape_, data.intersect_ray_, data.diag_ - delta));
@@ -148,7 +148,7 @@ class TracerTest
     reflect_ray_ = ray;
     reflect_payload_ = 0u;
 
-    EXPECT_CALL(tree_mock_, nodesIndexes())
+    EXPECT_CALL(tree_mock_, childsIndexes())
         .WillRepeatedly(ReturnRef(childs_indexes_));
     EXPECT_EQ(childs_indexes_,
               func(1u, data.shape_, data.intersect_ray_, data.diag_ - delta));
