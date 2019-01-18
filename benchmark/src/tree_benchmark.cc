@@ -20,6 +20,7 @@
  * SOFTWARE.
  */
 
+#include <array>
 #include <cstddef>
 #include <vector>
 
@@ -52,7 +53,7 @@ BENCHMARK_F(TreeBenchmark, insertRemoveNodesBenchmark)
 
     tree.removeNodes(
         [](const std::size_t&, const std::size_t&) {
-          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+          return std::array<std::size_t, 8u>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
         },
         [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
   }
@@ -61,32 +62,31 @@ BENCHMARK_F(TreeBenchmark, insertRemoveNodesBenchmark)
 BENCHMARK_F(TreeBenchmark, processNodesBenchmark)
 (::benchmark::State& state) {
   tree::Tree<std::size_t, 8u, std::size_t> tree(0u);
+  std::size_t depth = 0u;
+
+  tree.insertNodes(
+      [&depth](const std::size_t&, const std::size_t&) {
+        if (depth++ < 8u) {
+          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+        } else {
+          return std::vector<std::size_t>();
+        }
+      },
+      [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
 
   for (auto _ : state) {
-    std::size_t depth = 0u;
-
-    tree.insertNodes(
-        [&depth](const std::size_t&, const std::size_t&) {
-          if (depth++ < 8u) {
-            return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
-          } else {
-            return std::vector<std::size_t>();
-          }
-        },
-        [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
-
     tree.processNodes(
         [](const std::size_t&, const std::size_t&, const std::size_t&) {
-          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
-        },
-        [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
-
-    tree.removeNodes(
-        [](const std::size_t&, const std::size_t&) {
-          return std::vector<std::size_t>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+          return std::array<std::size_t, 8u>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
         },
         [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
   }
+
+  tree.removeNodes(
+      [](const std::size_t&, const std::size_t&) {
+        return std::array<std::size_t, 8u>({0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u});
+      },
+      [](const std::size_t&, const std::size_t&) { return 0u; }, 0u);
 }
 
 }  // namespace benchmark

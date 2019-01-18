@@ -26,6 +26,7 @@
 #include <array>
 #include <cstddef>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -46,16 +47,15 @@ class TreeNode
           Payload, std::array<std::unique_ptr<TreeNode<Payload, N> >, N> > {
  public:
   /**
-   * @brief Constructor.
-   * Forwards all parameters to node::Node constructor
-   *
-   * @param args Parameters to be forwarded
+   * @brief Constructor
+   * @param payload Payload to be stored in the node
+   * @param childs STL container of pointers to child nodes
    */
-  template <typename... Args>
-  explicit TreeNode(Args&&... args)
+  template <typename U, typename V>
+  explicit TreeNode(U&& payload, V&& childs)
       : node::Node<Payload,
                    std::array<std::unique_ptr<TreeNode<Payload, N> >, N> >(
-            std::forward<Args>(args)...) {}
+            std::forward<U>(payload), std::forward<V>(childs)) {}
 };
 
 /**
@@ -68,7 +68,7 @@ class Tree {
  public:
   /**
    * @brief Constructor
-   * @param shape Base shape of the tree
+   * @param shape Boundary shape of the tree
    */
   template <typename T>
   explicit Tree(T&& shape)
@@ -86,7 +86,7 @@ class Tree {
    *
    * @param shape_func Function to be applied to each node's shape to calculate
    * child's shape. Function is expected to have following signature:
-   * "Shape function(std::size_t, const Shape&)"
+   * "Shape function(const std::size_t&, const Shape&)"
    * where first parameter is an index of target child
    *
    * @param args Various arguments list to be passed to user functions
@@ -96,7 +96,8 @@ class Tree {
                    Args&&... args) {
     root_.processChilds(
         [&insert_func](auto& childs, const Shape& shape, Args... args) {
-          const auto& target_childs = std::invoke(insert_func, shape, args...);
+          const auto& target_childs =
+              std::invoke(insert_func, shape, std::forward<Args>(args)...);
           std::for_each(
               target_childs.begin(), target_childs.end(),
               [&childs](const std::size_t& child_index) {
@@ -109,8 +110,8 @@ class Tree {
         },
         [&shape_func](const std::size_t& child_index, const Shape& shape,
                       Args... args) {
-          return std::tuple<Shape, Args&&...>(shape_func(child_index, shape),
-                                              std::forward<Args>(args)...);
+          return std::make_tuple(shape_func(child_index, shape),
+                                 std::forward<Args>(args)...);
         },
         shape_, std::forward<Args>(args)...);
   }
@@ -126,7 +127,7 @@ class Tree {
    *
    * @param shape_func Function to be applied to each node's shape to calculate
    * child's shape. Function is expected to have following signature:
-   * "Shape function(std::size_t, const Shape&)"
+   * "Shape function(const std::size_t&, const Shape&)"
    * where first parameter is an index of target child
    *
    * @param args Various arguments list to be passed to user functions
@@ -136,7 +137,8 @@ class Tree {
                    Args&&... args) {
     root_.processChilds(
         [&remove_func](auto& childs, const Shape& shape, Args... args) {
-          auto target_childs = std::invoke(remove_func, shape, args...);
+          auto target_childs =
+              std::invoke(remove_func, shape, std::forward<Args>(args)...);
           std::for_each(
               target_childs.begin(), target_childs.end(),
               [&childs](const std::size_t& child_index) {
@@ -147,15 +149,15 @@ class Tree {
 
           std::vector<std::size_t> res;
           std::sort(target_childs.begin(), target_childs.end());
-          std::set_difference(kChildsIndexes.begin(), kChildsIndexes.end(),
+          std::set_difference(childsIndexes().begin(), childsIndexes().end(),
                               target_childs.begin(), target_childs.end(),
                               std::inserter(res, res.begin()));
           return res;
         },
         [&shape_func](const std::size_t& child_index, const Shape& shape,
                       Args... args) {
-          return std::tuple<Shape, Args&&...>(shape_func(child_index, shape),
-                                              std::forward<Args>(args)...);
+          return std::make_tuple(shape_func(child_index, shape),
+                                 std::forward<Args>(args)...);
         },
         shape_, std::forward<Args>(args)...);
   }
@@ -169,7 +171,7 @@ class Tree {
    *
    * @param shape_func Function to be applied to each node's shape to calculate
    * child's shape. Function is expected to have following signature:
-   * "Shape function(std::size_t, const Shape&)"
+   * "Shape function(const std::size_t&, const Shape&)"
    * where first parameter is an index of target child
    *
    * @param args Various arguments list to be passed to user functions
@@ -180,11 +182,19 @@ class Tree {
     root_.processPayload(process_func,
                          [&shape_func](const std::size_t& child_index,
                                        const Shape& shape, Args... args) {
-                           return std::tuple<Shape, Args&&...>(
+                           return std::make_tuple(
                                shape_func(child_index, shape),
                                std::forward<Args>(args)...);
                          },
                          shape_, std::forward<Args>(args)...);
+  }
+
+  /**
+   * @brief Returns array of childs indexes for certain tree type
+   * @return Array of childs indexes
+   */
+  static constexpr const std::array<std::size_t, N>& childsIndexes() {
+    return kChildsIndexes;
   }
 
  private:
@@ -199,10 +209,10 @@ class Tree {
     return {I...};
   }
 
- private:
   static constexpr std::array<std::size_t, N> kChildsIndexes =
       fillChildsIndexes(std::make_index_sequence<N>{});
 
+ private:
   Node root_;
   Shape shape_;
 };

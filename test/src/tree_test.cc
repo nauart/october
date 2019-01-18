@@ -40,7 +40,7 @@ namespace test {
 using ChildsIndexesData = std::vector<std::size_t>;
 
 // clang-format off
-static const std::vector<ChildsIndexesData> childs_indexes_data = {
+static const std::vector<ChildsIndexesData> childs_to_process_indexes_data = {
   {},
   {0u},
   {0u, 1u},
@@ -102,12 +102,7 @@ class TreeNodeMock {
   static std::unique_ptr<NodeMock> node_mock_;
 
   template <typename... Args>
-  explicit TreeNodeMock(Args&&...) {
-    node_mock_ = std::make_unique<NodeMock>();
-  }
-  ~TreeNodeMock() {
-    node_mock_.reset();
-  }
+  explicit TreeNodeMock(Args&&...) {}
 
   template <typename... Args>
   void processPayload(Args&&... args) {
@@ -129,11 +124,18 @@ struct TypeValue {
 template <typename T>
 class TreeTest : public ::testing::Test {
  protected:
+  void SetUp() {
+    TreeNodeMock::node_mock_ = std::make_unique<NodeMock>();
+  }
+  void TearDown() {
+    TreeNodeMock::node_mock_.reset();
+  }
+
   void checkInsertChildsFunc(const ProcessChildsFunc& func) {
     using namespace ::testing;
 
-    for (std::size_t i = 0u; i < childs_indexes_data.size(); ++i) {
-      const ChildsIndexesData& indexes = childs_indexes_data.at(i);
+    for (std::size_t i = 0u; i < childs_to_process_indexes_data.size(); ++i) {
+      const ChildsIndexesData& indexes = childs_to_process_indexes_data.at(i);
 
       ChildsTestData childs;
       EXPECT_CALL(function_mock_, insertRemoveFunc(0u, 1u, 2u))
@@ -141,7 +143,8 @@ class TreeTest : public ::testing::Test {
       EXPECT_EQ(indexes, func(childs, 0u, 1u, 2u));
 
       for (std::size_t j = 0u; j < childs.size(); ++j) {
-        if (indexes.end() != std::find(indexes.begin(), indexes.end(), j)) {
+        if (std::any_of(indexes.begin(), indexes.end(),
+                        [&j](const auto& index) { return index == j; })) {
           EXPECT_TRUE(childs.at(j));
         } else {
           EXPECT_FALSE(childs.at(j));
@@ -163,9 +166,10 @@ class TreeTest : public ::testing::Test {
      * 3  {0u, 1u, 2u}, {1u, 2u}, {2u}, {}, ...
      * ---
      */
-    ChildsIndexesData expected_indexes = childs_indexes_data.at(value_);
-    for (std::size_t i = 0u; i < childs_indexes_data.size(); ++i) {
-      const ChildsIndexesData& indexes = childs_indexes_data.at(i);
+    ChildsIndexesData expected_indexes =
+        childs_to_process_indexes_data.at(value_);
+    for (std::size_t i = 0u; i < childs_to_process_indexes_data.size(); ++i) {
+      const ChildsIndexesData& indexes = childs_to_process_indexes_data.at(i);
 
       ChildsTestData childs;
       std::generate(childs.begin(), childs.end(),
@@ -175,14 +179,15 @@ class TreeTest : public ::testing::Test {
       EXPECT_EQ(expected_indexes, func(childs, 0u, 1u, 2u));
 
       for (std::size_t j = 0u; j < childs.size(); ++j) {
-        if (indexes.end() != std::find(indexes.begin(), indexes.end(), j)) {
+        if (std::any_of(indexes.begin(), indexes.end(),
+                        [&j](const auto& index) { return index == j; })) {
           EXPECT_FALSE(childs.at(j));
         } else {
           EXPECT_TRUE(childs.at(j));
         }
       }
 
-      if (expected_indexes.end() != expected_indexes.begin()) {
+      if (!expected_indexes.empty()) {
         expected_indexes.erase(expected_indexes.begin());
       }
     }
@@ -202,6 +207,7 @@ class TreeTest : public ::testing::Test {
   static const std::size_t value_ = T::value;
 
   FunctionMock function_mock_;
+
   const ProcessPayloadFunc process_func_;
   const InsertRemoveFunc insert_remove_func_ = std::bind(
       &FunctionMock::insertRemoveFunc, &function_mock_, std::placeholders::_1,
@@ -218,7 +224,7 @@ typedef ::testing::Types<TypeValue<0u>, TypeValue<1u>, TypeValue<2u>,
 
 TYPED_TEST_CASE(TreeTest, TestTypes);
 
-TYPED_TEST(TreeTest, InsertNodes_Success) {
+TYPED_TEST(TreeTest, InsertNodes_ProcessChildsInvokedOnRootNode) {
   using namespace ::testing;
 
   Tree<PayloadTestData, this->value_, ShapeTestData, TreeNodeMock> tree(
@@ -226,7 +232,7 @@ TYPED_TEST(TreeTest, InsertNodes_Success) {
 
   ProcessChildsFunc insert_childs_func;
   InterpolateFunc interpolate_func;
-  EXPECT_CALL(*TreeNodeMock::node_mock_.get(), processChilds(_, _, 0u, 1u, 2u))
+  EXPECT_CALL(*TreeNodeMock::node_mock_, processChilds(_, _, 0u, 1u, 2u))
       .WillOnce(DoAll(SaveArg<0>(&insert_childs_func),
                       SaveArg<1>(&interpolate_func)));
 
@@ -236,7 +242,7 @@ TYPED_TEST(TreeTest, InsertNodes_Success) {
   this->checkInterpolateFunc(interpolate_func);
 }
 
-TYPED_TEST(TreeTest, RemoveNodes_Success) {
+TYPED_TEST(TreeTest, RemoveNodes_ProcessChildsInvokedOnRootNode) {
   using namespace ::testing;
 
   Tree<PayloadTestData, this->value_, ShapeTestData, TreeNodeMock> tree(
@@ -244,7 +250,7 @@ TYPED_TEST(TreeTest, RemoveNodes_Success) {
 
   ProcessChildsFunc remove_childs_func;
   InterpolateFunc interpolate_func;
-  EXPECT_CALL(*TreeNodeMock::node_mock_.get(), processChilds(_, _, 0u, 1u, 2u))
+  EXPECT_CALL(*TreeNodeMock::node_mock_, processChilds(_, _, 0u, 1u, 2u))
       .WillOnce(DoAll(SaveArg<0>(&remove_childs_func),
                       SaveArg<1>(&interpolate_func)));
 
@@ -254,19 +260,18 @@ TYPED_TEST(TreeTest, RemoveNodes_Success) {
   this->checkInterpolateFunc(interpolate_func);
 }
 
-TYPED_TEST(TreeTest, ProcessNodes_Success) {
+TYPED_TEST(TreeTest, ProcessNodes_ProcessPayloadInvokedOnRootNode) {
   using namespace ::testing;
 
   Tree<PayloadTestData, this->value_, ShapeTestData, TreeNodeMock> tree(
       ShapeTestData(0u));
 
   InterpolateFunc interpolate_func;
-  EXPECT_CALL(*TreeNodeMock::node_mock_.get(),
+  EXPECT_CALL(*TreeNodeMock::node_mock_,
               processPayload(Ref(this->process_func_), _, 0u, 1u, 2u))
       .WillOnce(SaveArg<1>(&interpolate_func));
 
-  tree.processNodes(this->process_func_, this->shape_func_,
-                    ParameterTestData(1u), ParameterTestData(2u));
+  tree.processNodes(this->process_func_, this->shape_func_, 1u, 2u);
 
   this->checkInterpolateFunc(interpolate_func);
 }
