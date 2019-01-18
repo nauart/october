@@ -118,6 +118,7 @@ class NodeTest : public ::testing::TestWithParam<
 
  protected:
   FunctionMock function_mock_;
+
   const ProcessPayloadFunc process_payload_func_ = std::bind(
       &FunctionMock::processPayloadFunc, &function_mock_, std::placeholders::_1,
       std::placeholders::_2, std::placeholders::_3);
@@ -131,7 +132,7 @@ class NodeTest : public ::testing::TestWithParam<
   ChildsTestData childs_;
 };
 
-TEST_P(NodeTest, ProcessRootPayload_Success) {
+TEST_P(NodeTest, ProcessPayload_PayloadFuncInvokedOnRootNode) {
   using namespace ::testing;
 
   EXPECT_CALL(function_mock_, processPayloadFunc(0u, 1u, 2u));
@@ -142,7 +143,7 @@ TEST_P(NodeTest, ProcessRootPayload_Success) {
   node.processPayload(process_payload_func_, interpolate_func_, 1u, 2u);
 }
 
-TEST_P(NodeTest, ProcessRootChilds_Success) {
+TEST_P(NodeTest, ProcessChilds_ChildsFuncInvokedOnRootNode) {
   using namespace ::testing;
 
   EXPECT_CALL(function_mock_, processChildsFunc(ContainerEq(childs_), 1u, 2u));
@@ -153,22 +154,23 @@ TEST_P(NodeTest, ProcessRootChilds_Success) {
   node.processChilds(process_childs_func_, interpolate_func_, 1u, 2u);
 }
 
-TEST_P(NodeTest, ProcessChildNodesPayload_Success) {
+TEST_P(NodeTest, ProcessPayload_PayloadFuncInvokedOnChildNodes) {
   using namespace ::testing;
 
   const ChildsIndexesData& childs_to_process_indexes = std::get<1>(GetParam());
   for (std::size_t i = 0u; i < childs_.size(); ++i) {
-    if (childs_.at(i)) {
-      if (childs_to_process_indexes.end() !=
-          std::find(childs_to_process_indexes.begin(),
-                    childs_to_process_indexes.end(), i)) {
-        EXPECT_CALL(*childs_.at(i).get(),
+    auto& child = childs_.at(i);
+    if (child) {
+      if (std::any_of(childs_to_process_indexes.begin(),
+                      childs_to_process_indexes.end(),
+                      [&i](const auto& index) { return index == i; })) {
+        EXPECT_CALL(*child,
                     processPayload(Ref(process_payload_func_),
                                    Ref(interpolate_func_), 2u, 1u));
       } else {
-        EXPECT_CALL(*childs_.at(i).get(), processPayload(_, _, _, _)).Times(0);
+        EXPECT_CALL(*child, processPayload(_, _, _, _)).Times(0);
       }
-      EXPECT_CALL(*childs_.at(i).get(), processChilds(_, _, _, _)).Times(0);
+      EXPECT_CALL(*child, processChilds(_, _, _, _)).Times(0);
     }
   }
 
@@ -182,22 +184,23 @@ TEST_P(NodeTest, ProcessChildNodesPayload_Success) {
   node.processPayload(process_payload_func_, interpolate_func_, 1u, 2u);
 }
 
-TEST_P(NodeTest, ProcessChildNodesChilds_Success) {
+TEST_P(NodeTest, ProcessChilds_ChildsFuncInvokedOnChildNodes) {
   using namespace ::testing;
 
   const ChildsIndexesData& childs_to_process_indexes = std::get<1>(GetParam());
   for (std::size_t i = 0u; i < childs_.size(); ++i) {
-    if (childs_.at(i)) {
-      if (childs_to_process_indexes.end() !=
-          std::find(childs_to_process_indexes.begin(),
-                    childs_to_process_indexes.end(), i)) {
-        EXPECT_CALL(*childs_.at(i).get(),
+    auto& child = childs_.at(i);
+    if (child) {
+      if (std::any_of(childs_to_process_indexes.begin(),
+                      childs_to_process_indexes.end(),
+                      [&i](const auto& index) { return index == i; })) {
+        EXPECT_CALL(*child,
                     processChilds(Ref(process_childs_func_),
                                   Ref(interpolate_func_), 2u, 1u));
       } else {
-        EXPECT_CALL(*childs_.at(i).get(), processChilds(_, _, _, _)).Times(0);
+        EXPECT_CALL(*child, processChilds(_, _, _, _)).Times(0);
       }
-      EXPECT_CALL(*childs_.at(i).get(), processPayload(_, _, _, _)).Times(0);
+      EXPECT_CALL(*child, processPayload(_, _, _, _)).Times(0);
     }
   }
 
