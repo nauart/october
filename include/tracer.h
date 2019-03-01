@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <array>
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
@@ -41,179 +42,97 @@ class Tracer {
   /**
    *
    */
-  template <typename Tree>
-  static void buildTree(Tree& tree, const geometry::Ray<T>& ray,
-                        const T& power) {
+  template <typename Tree, typename Shape>
+  static void buildTree(Tree& tree, const geometry::Ray<T>& ray, const T& power) {
     tree.insertNodes(
-        [](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
-                const T& power) {
-          geometry::Ray<T> reflect_ray;
-          const auto& dist =
-              geometry::rayShapeIntersection(ray, shape, reflect_ray);
-          if (geometry::isPositive(dist) &&
-              power < shapeDiag(shape)) {  // isLess()
-            return std::vector<std::size_t>(
-                {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
-          }
-          return std::vector<std::size_t>();
-        },
-        shapeChild, ray, power);
+        ,
+        geometry::shapeChild, ray, power);
   }
 
   /**
    *
    */
-  template <typename Tree>
-  static void burnTree(Tree& tree, const geometry::Ray<T>& ray,
-                       const T& power) {
+  template <typename Tree, typename Shape>
+  static void burnTree(Tree& tree, const geometry::Ray<T>& ray, const T& power) {
     tree.removeNodes(
-        [](const geometry::Shape<T>& shape, const geometry::Ray<T>& ray,
-                const T& power) {
-          geometry::Ray<T> reflect_ray;
-          const auto& dist =
-              geometry::rayShapeIntersection(ray, shape, reflect_ray);
-          if (geometry::isPositive(dist) &&
-              power < shapeDiag(shape)) {  // isLess()
-            return std::vector<std::size_t>(
-                {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
-          }
-          return std::vector<std::size_t>();
-        },
-        shapeChild, ray, power);
+        ,
+        geometry::shapeChild, ray, power);
   }
 
   /**
    *
    */
-  template <typename Tree, typename Payload>
+  template <typename Tree, typename Shape, typename Payload>
   static void fillTree(Tree& tree, const geometry::Ray<T>& ray,
                        const T& power, const Payload& new_payload) {
     tree.processNodes(
-        [&new_payload](
-            Payload& payload, const geometry::Shape<T>& shape,
-            const geometry::Ray<T>& ray, const T& power) {
+        [&new_payload](Payload& payload, const Shape& shape, const geometry::Ray<T>& ray, const T& power) {
           geometry::Ray<T> reflect_ray;
-          const auto& dist =
-              geometry::rayShapeIntersection(ray, shape, reflect_ray);
+          const T& dist = geometry::rayShapeIntersection(ray, shape, reflect_ray);
           if (geometry::isPositive(dist)) {
-              payload = new_payload;
-              if (power < shapeDiag(shape)) {  // isLess()
-                  return std::vector<std::size_t>(
-                      {predictChild(shape, reflect_ray.pos_, Tree::childsIndexes())});
+              if (geometry::isLess(power, geometry::shapeDiag(shape))) {
+                  return std::vector<std::size_t>(Tree::childsIndexes().begin(),
+                                                  Tree::childsIndexes().end());
               }
+              payload = new_payload;
           }
           return std::vector<std::size_t>();
         },
-        shapeChild, ray, power);
+        geometry::shapeChild, ray, power);
   }
 
   /**
    *
    */
-  template <typename Tree, typename Payload>
+  template <typename Tree, typename Shape, typename Payload>
   static void castTree(const Tree& tree, const geometry::Ray<T>& ray, const T& power,
                        T& dist, geometry::Ray<T>& reflect_ray,
                        Payload& reflect_payload) {
     dist = geometry::getMin<T>();
     tree.processNodes(
         [&dist, &reflect_ray, &reflect_payload](
-            const Payload& payload, const geometry::Shape<T>& shape,
+            const Payload& payload, const Shape& shape,
             const geometry::Ray<T>& ray, const T& power) {
           dist = geometry::rayShapeIntersection(ray, shape, reflect_ray);
           if (geometry::isPositive(dist)) {
             reflect_payload = payload;
-            if (power < shapeDiag(shape)) {  // isLess()
+            if (geometry::isLess(power, geometry::shapeDiag(shape))) {
               return std::vector<std::size_t>(Tree::childsIndexes().begin(),
                                               Tree::childsIndexes().end());
             }
           }
           return std::vector<std::size_t>();
         },
-        shapeChild, ray, power);
+        geometry::shapeChild, ray, power);
   }
 
  private:
-  /**
-   * @brief shapeHalf
-   * @param shape
-   * @return
-   */
-  static geometry::Vec3<T> shapeHalf(const geometry::Shape<T>& shape) {
-    return {(shape.max_.x_ - shape.min_.x_) / 2u,
-            (shape.max_.y_ - shape.min_.y_) / 2u,
-            (shape.max_.z_ - shape.min_.z_) / 2u};
-  }
-
-  /**
-   * @brief shapeDiag
-   * @param shape
-   */
-  static auto shapeDiag(const geometry::Shape<T>& shape) {
-    return geometry::vectorLength(geometry::Vec3<T>(
-        {shape.max_.x_ - shape.min_.x_, shape.max_.y_ - shape.min_.y_,
-         shape.max_.z_ - shape.min_.z_}));
-  }
-
-  /**
-   * @brief shapeFunc
-   * (axis-aligned box)
-   * @param child_index
-   * @param shape
-   * @return
-   */
-  static geometry::Shape<T> shapeChild(const std::size_t& child_index,
-                                       const geometry::Shape<T>& shape) {
-    const std::uint8_t x = child_index % 2u;
-    const std::uint8_t y = child_index % 4u / 2u;
-    const std::uint8_t z = child_index % 8u / 4u;
-
-    const geometry::Vec3<T>& half = shapeHalf(shape);
-
-    return {
-        {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_,
-         shape.min_.z_ + z * half.z_},
-        {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_,
-         shape.max_.z_ - (z ^ 1u) * half.z_}};
-  }
-
   /**
    * @brief predictChild
    * @param shape
    * @param point
    * @return
    */
-  template <typename NodesIndexes>
-  static std::size_t predictChild(const geometry::Shape<T>& shape,
-                                  const geometry::Vec3<T>& point,
-                                  const NodesIndexes& indexes) {
-    const geometry::Vec3<T>& half = shapeHalf(shape);
+  template <typename Shape>
+  static std::vector<std::size_t> childIndexRenameMe(const Shape& shape,
+                                const geometry::Ray<T>& ray,
+                                const T& power) {
+      geometry::Ray<T> reflect_ray;
+      T dist = geometry::rayShapeIntersection(ray, shape, reflect_ray);
 
-    const std::array<std::size_t, 4u>& target_x =
-        point.x_ < half.x_ ? std::array<std::size_t, 4u>({0u, 2u, 4u, 6u})
-                           : std::array<std::size_t, 4u>({1u, 3u, 5u, 7u});
-
-    const std::array<std::size_t, 4u>& target_y =
-        point.y_ < half.y_ ? std::array<std::size_t, 4u>({0u, 1u, 4u, 5u})
-                           : std::array<std::size_t, 4u>({2u, 3u, 6u, 7u});
-
-    const std::array<std::size_t, 4u>& target_z =
-        point.z_ < half.z_ ? std::array<std::size_t, 4u>({0u, 1u, 2u, 3u})
-                           : std::array<std::size_t, 4u>({4u, 5u, 6u, 7u});
-
-    std::vector<std::size_t> res_a;
-    std::set_intersection(indexes.begin(), indexes.end(), target_x.begin(),
-                          target_x.end(), std::inserter(res_a, res_a.begin()));
-
-    std::vector<std::size_t> res_b;
-    std::set_intersection(target_y.begin(), target_y.end(), target_z.begin(),
-                          target_z.end(), std::inserter(res_b, res_b.begin()));
-
-    std::vector<std::size_t> res;
-    std::set_intersection(res_a.begin(), res_a.end(), res_b.begin(),
-                          res_b.end(), std::inserter(res, res.begin()));
-
-    // isLess()!!!
-    return res.size() > 0u ? res.at(0u) : 0u;
+      if (geometry::isPositive(dist) && geometry::isLess(power, geometry::shapeDiag(shape))) {
+          std::size_t index = indexes.begin();
+          std::for_each(Tree::childsIndexes().begin(), Tree::childsIndexes().end(),
+                        [&shape, &ray](const std::size_t& child_index) {
+              const T& child_dist = geometry::rayShapeIntersection(
+                  ray, geometry::shapeChild(shape, child_index), reflect_ray);
+              if (geometry::isPositive(child_dist) && geometry::isLess(child_dist, dist)) {
+                  index = child_index;
+              }
+          });
+          return {index};
+      }
+      return {};
   }
 };
 

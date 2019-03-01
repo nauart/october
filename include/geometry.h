@@ -296,5 +296,46 @@ auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
   return res;
 }
 
+/**
+ * @brief shapeHalf
+ * @param shape
+ * @return
+ */
+static geometry::Vec3<T> shapeHalf(const geometry::Shape<T>& shape) {
+  return {(shape.max_.x_ - shape.min_.x_) / 2u,
+          (shape.max_.y_ - shape.min_.y_) / 2u,
+          (shape.max_.z_ - shape.min_.z_) / 2u};
+}
+
+/**
+ * @brief shapeDiag
+ * @param shape
+ */
+static auto shapeDiag(const geometry::Shape<T>& shape) {
+  return geometry::vectorLength(geometry::Vec3<T>(
+      {shape.max_.x_ - shape.min_.x_, shape.max_.y_ - shape.min_.y_,
+       shape.max_.z_ - shape.min_.z_}));
+}
+
+/**
+ * @brief shapeFunc
+ * (axis-aligned box)
+ * @param child_index
+ * @param shape
+ * @return
+ */
+template <typename Shape>
+static Shape childShape(const std::size_t& child_index, const Shape& shape) {
+  const std::uint8_t x = child_index % 2u;
+  const std::uint8_t y = child_index % 4u / 2u;
+  const std::uint8_t z = child_index % 8u / 4u;
+
+  const geometry::Vec3<T>& half = geometry::shapeHalf(shape);
+
+  return {
+      {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_, shape.min_.z_ + z * half.z_},
+      {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_, shape.max_.z_ - (z ^ 1u) * half.z_}};
+}
+
 }  // namespace geometry
 }  // namespace october

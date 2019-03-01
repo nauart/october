@@ -137,7 +137,7 @@ class Tree {
                    Args&&... args) {
     root_.processChilds(
         [&remove_func](auto& childs, const Shape& shape, Args... args) {
-          auto target_childs =
+          const auto& target_childs =
               std::invoke(remove_func, shape, std::forward<Args>(args)...);
           std::for_each(
               target_childs.begin(), target_childs.end(),
