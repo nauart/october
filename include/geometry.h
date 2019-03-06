@@ -49,10 +49,10 @@ struct Ray {
 };
 
 /**
- * @brief Represents shape's bound in 3D space
+ * @brief Represents axis-aligned bounding box in 3D space
  */
 template <typename T>
-struct Shape {
+struct Box {
   Vec3<T> min_;
   Vec3<T> max_;
 };
@@ -62,7 +62,7 @@ struct Shape {
  * @return Minimal value
  */
 template <typename T>
-T getMin() {
+constexpr T getMin() {
   return std::numeric_limits<T>::lowest();
 }
 
@@ -71,7 +71,7 @@ T getMin() {
  * @return Maximal value
  */
 template <typename T>
-T getMax() {
+constexpr T getMax() {
   return std::numeric_limits<T>::max();
 }
 
@@ -81,7 +81,7 @@ T getMax() {
  * @return True if given value is positive, false otherwise
  */
 template <typename T>
-bool isPositive(const T& value) {
+constexpr bool isPositive(const T& value) {
   return value > std::numeric_limits<T>::epsilon();
 }
 
@@ -91,7 +91,7 @@ bool isPositive(const T& value) {
  * @return True if given value is negative, false otherwise
  */
 template <typename T>
-bool isNegative(const T& value) {
+constexpr bool isNegative(const T& value) {
   return value < -std::numeric_limits<T>::epsilon();
 }
 
@@ -101,8 +101,34 @@ bool isNegative(const T& value) {
  * @return True if given value is equal to zero, false otherwise
  */
 template <typename T>
-bool isZero(const T& value) {
-  return !isPositive(value) && !isNegative(value);
+constexpr bool isZero(const T& value) {
+  return std::abs(value) <= std::numeric_limits<T>::epsilon();
+}
+
+/**
+ * @brief Checks if first value is more than second
+ * @param a First value
+ * @param b Second value
+ * @return True if first value is more than second, false otherwise
+ */
+template <typename T>
+constexpr bool isMore(const T& a, const T& b) {
+  return a - b > std::max(std::numeric_limits<T>::epsilon(),
+                          std::numeric_limits<T>::epsilon() *
+                              std::max(std::abs(a), std::abs(b)));
+}
+
+/**
+ * @brief Checks if first value is less than second
+ * @param a First value
+ * @param b Second value
+ * @return True if first value is less than second, false otherwise
+ */
+template <typename T>
+constexpr bool isLess(const T& a, const T& b) {
+  return a - b < -std::max(std::numeric_limits<T>::epsilon(),
+                           std::numeric_limits<T>::epsilon() *
+                               std::max(std::abs(a), std::abs(b)));
 }
 
 /**
@@ -112,20 +138,10 @@ bool isZero(const T& value) {
  * @return True if given values are equal, false otherwise
  */
 template <typename T>
-bool isEqual(const T& a, const T& b) {
-  return std::abs(a - b) <=
-         std::numeric_limits<T>::epsilon() * std::max(std::abs(a), std::abs(b));
-}
-
-/**
- * @brief Checks if two vectors are equal
- * @param a First vector
- * @param b Second vector
- * @return True if given vectors are equal, false otherwise
- */
-template <typename T>
-bool isVectorEqual(const Vec3<T>& a, const Vec3<T>& b) {
-  return isEqual(a.x_, b.x_) && isEqual(a.y_, b.y_) && isEqual(a.z_, b.z_);
+constexpr bool isEqual(const T& a, const T& b) {
+  return std::abs(a - b) <= std::max(std::numeric_limits<T>::epsilon(),
+                                     std::numeric_limits<T>::epsilon() *
+                                         std::max(std::abs(a), std::abs(b)));
 }
 
 /**
@@ -136,21 +152,32 @@ bool isVectorEqual(const Vec3<T>& a, const Vec3<T>& b) {
  * @return True if value belongs to the range, false otherwise
  */
 template <typename T>
-bool inRange(const T& value, const T& low, const T& high) {
-  return value >= low && value <= high;
+constexpr bool inRange(const T& value, const T& low, const T& high) {
+  return !isLess(value, low) && !isMore(value, high);
 }
 
 /**
- * @brief Checks if 3D point belongs to specified volume (shape)
+ * @brief Checks if 3D point belongs to specified bounding box (AABB)
  * @param point Point to be checked
- * @param volume Specified volume
+ * @param box Target bounding box
  * @return True if point belongs to the volume, false otherwise
  */
 template <typename T>
-bool inVolume(const Vec3<T>& point, const Shape<T>& volume) {
-  return inRange(point.x_, volume.min_.x_, volume.max_.x_) &&
-         inRange(point.y_, volume.min_.y_, volume.max_.y_) &&
-         inRange(point.z_, volume.min_.z_, volume.max_.z_);
+constexpr bool inBox(const Vec3<T>& point, const Box<T>& box) {
+  return inRange(point.x_, box.min_.x_, box.max_.x_) &&
+         inRange(point.y_, box.min_.y_, box.max_.y_) &&
+         inRange(point.z_, box.min_.z_, box.max_.z_);
+}
+
+/**
+ * @brief Checks if two vectors are equal
+ * @param a First vector
+ * @param b Second vector
+ * @return True if given vectors are equal, false otherwise
+ */
+template <typename T>
+constexpr bool isVectorEqual(const Vec3<T>& a, const Vec3<T>& b) {
+  return isEqual(a.x_, b.x_) && isEqual(a.y_, b.y_) && isEqual(a.z_, b.z_);
 }
 
 /**
@@ -160,7 +187,7 @@ bool inVolume(const Vec3<T>& point, const Shape<T>& volume) {
  * @return Result vector
  */
 template <typename T>
-Vec3<T> scaleVector(const Vec3<T>& vector, const T& scalar) {
+constexpr Vec3<T> scaleVector(const Vec3<T>& vector, const T& scalar) {
   return {vector.x_ * scalar, vector.y_ * scalar, vector.z_ * scalar};
 }
 
@@ -171,7 +198,7 @@ Vec3<T> scaleVector(const Vec3<T>& vector, const T& scalar) {
  * @return Result vector
  */
 template <typename T>
-Vec3<T> addVectors(const Vec3<T>& a, const Vec3<T>& b) {
+constexpr Vec3<T> addVectors(const Vec3<T>& a, const Vec3<T>& b) {
   return {a.x_ + b.x_, a.y_ + b.y_, a.z_ + b.z_};
 }
 
@@ -182,7 +209,7 @@ Vec3<T> addVectors(const Vec3<T>& a, const Vec3<T>& b) {
  * @return Result scalar value
  */
 template <typename T>
-T dotProduct(const Vec3<T>& a, const Vec3<T>& b) {
+constexpr T dotProduct(const Vec3<T>& a, const Vec3<T>& b) {
   return a.x_ * b.x_ + a.y_ * b.y_ + a.z_ * b.z_;
 }
 
@@ -193,7 +220,7 @@ T dotProduct(const Vec3<T>& a, const Vec3<T>& b) {
  * @return Result vector
  */
 template <typename T>
-Vec3<T> crossProduct(const Vec3<T>& a, const Vec3<T>& b) {
+constexpr Vec3<T> crossProduct(const Vec3<T>& a, const Vec3<T>& b) {
   return {a.y_ * b.z_ - a.z_ * b.y_, a.z_ * b.x_ - a.x_ * b.z_,
           a.x_ * b.y_ - a.y_ * b.x_};
 }
@@ -204,7 +231,7 @@ Vec3<T> crossProduct(const Vec3<T>& a, const Vec3<T>& b) {
  * @return Length of given vector
  */
 template <typename T>
-auto vectorLength(const Vec3<T>& vector) {
+constexpr T vectorLength(const Vec3<T>& vector) {
   return std::sqrt(vector.x_ * vector.x_ + vector.y_ * vector.y_ +
                    vector.z_ * vector.z_);
 }
@@ -215,12 +242,9 @@ auto vectorLength(const Vec3<T>& vector) {
  * @return Normalized vector
  */
 template <typename T>
-Vec3<T> normalizeVector(const Vec3<T>& vector) {
+constexpr Vec3<T> normalizeVector(const Vec3<T>& vector) {
   const T& length = vectorLength(vector);
-  if (!isZero(length)) {
-    return {vector.x_ / length, vector.y_ / length, vector.z_ / length};
-  }
-  return vector;
+  return {vector.x_ / length, vector.y_ / length, vector.z_ / length};
 }
 
 /**
@@ -238,7 +262,7 @@ Vec3<T> normalizeVector(const Vec3<T>& vector) {
  * @return Distance from start of the ray to intersection point if it exists,
  * negative value otherwise
  */
-template <typename T>
+/*template <typename T>
 auto rayFaceIntersection(const Ray<T>& ray, const Shape<T>& shape,
                          const T& alpha, const T& dist_a, const T& dist_b,
                          Vec3<T>& point) {
@@ -252,7 +276,7 @@ auto rayFaceIntersection(const Ray<T>& ray, const Shape<T>& shape,
     }
   }
   return getMin<T>();
-}
+}*/
 
 /**
  * @brief Checks for intersection between ray and axis-aligned box in 3D
@@ -264,7 +288,7 @@ auto rayFaceIntersection(const Ray<T>& ray, const Shape<T>& shape,
  * @return Distance from start of the ray to intersection point if it exists,
  * negative value otherwise
  */
-template <typename T>
+/*template <typename T>
 auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
                           Ray<T>& reflect_ray) {
   Vec3<T> point_x, point_y, point_z;
@@ -294,7 +318,41 @@ auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
   }
 
   return res;
+}*/
+
+/**
+ * @brief shapeDiag
+ * @param shape
+ */
+/*template <typename T>
+constexpr T shapeDiag(const Box<T>& box) {
+  return vectorLength({box.max_.x_ - box.min_.x_,
+                       box.max_.y_ - box.min_.y_,
+                       box.max_.z_ - box.min_.z_});
 }
+*/
+/**
+ * @brief shapeFunc
+ * (axis-aligned box)
+ * @param child_index
+ * @param shape
+ * @return
+ */
+/*template <typename T>
+constexpr Box<T> childShape(const Box<T>& box, const std::size_t& child_index) {
+  const std::uint8_t x = child_index % 2u;
+  const std::uint8_t y = child_index % 4u / 2u;
+  const std::uint8_t z = child_index % 8u / 4u;
+
+  const Vec3<T>& half = {(box.max_.x_ - box.min_.x_) / 2u,
+                         (box.max_.y_ - box.min_.y_) / 2u,
+                         (box.max_.z_ - box.min_.z_) / 2u};
+
+  return {
+      {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_, shape.min_.z_ + z * half.z_},
+      {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_, shape.max_.z_ - (z ^ 1u) * half.z_}};
+}
+*/
 
 }  // namespace geometry
 }  // namespace october
