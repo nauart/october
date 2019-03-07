@@ -248,11 +248,44 @@ constexpr Vec3<T> normalizeVector(const Vec3<T>& vector) {
 }
 
 /**
+ * @brief shapeDiag
+ * @param shape
+ */
+/*template <typename T>
+constexpr T shapeDiag(const Box<T>& box) {
+  return vectorLength({box.max_.x_ - box.min_.x_,
+                       box.max_.y_ - box.min_.y_,
+                       box.max_.z_ - box.min_.z_});
+}*/
+
+/**
+ * @brief shapeFunc
+ * (axis-aligned box)
+ * @param child_index
+ * @param shape
+ * @return
+ */
+/*template <typename T, typename I>
+constexpr Box<T> childShape(const Box<T>& box, const I& child_index) {
+  const I& x = child_index % 2u;
+  const I& y = child_index % 4u / 2u;
+  const I& z = child_index % 8u / 4u;
+
+  const Vec3<T>& half = {(box.max_.x_ - box.min_.x_) / 2u,
+                         (box.max_.y_ - box.min_.y_) / 2u,
+                         (box.max_.z_ - box.min_.z_) / 2u};
+
+  return {
+      {box.min_.x_ + x * half.x_, box.min_.y_ + y * half.y_, box.min_.z_ + z * half.z_},
+      {box.max_.x_ - (x ^ 1u) * half.x_, box.max_.y_ - (y ^ 1u) * half.y_, box.max_.z_ - (z ^ 1u) * half.z_}};
+}*/
+
+/**
  * @brief Checks for intersection between ray and opposite faces
  * of axis-aligned box in 3D
  *
  * @param ray Ray to be checked for intersection
- * @param shape Shape to be checked for intersection (axis-aligned box)
+ * @param box Box to be checked for intersection (axis-aligned box)
  * @param alpha Cos of the angle between ray and face
  * @param dis_a Distance from start of the ray to first of two faces
  * @param dis_b Distance from start of the ray to second of two faces
@@ -262,47 +295,44 @@ constexpr Vec3<T> normalizeVector(const Vec3<T>& vector) {
  * @return Distance from start of the ray to intersection point if it exists,
  * negative value otherwise
  */
-/*template <typename T>
-auto rayFaceIntersection(const Ray<T>& ray, const Shape<T>& shape,
+template <typename T>
+T rayFaceIntersection(const Ray<T>& ray, const Box<T>& box,
                          const T& alpha, const T& dist_a, const T& dist_b,
                          Vec3<T>& point) {
-  if (!isZero(alpha)) {
-    const auto dist = std::min(dist_a / alpha, dist_b / alpha);
-    if (isPositive(dist)) {
-      point = addVectors(ray.pos_, scaleVector(ray.dir_, dist));
-      if (inVolume(point, shape)) {
-        return dist;
-      }
+  const T& dist = std::min(dist_a / alpha, dist_b / alpha);
+  if (isPositive(dist)) {
+    point = addVectors(ray.pos_, scaleVector(ray.dir_, dist));
+    if (inBox(point, box)) {
+      return dist;
     }
   }
   return getMin<T>();
-}*/
+}
 
 /**
  * @brief Checks for intersection between ray and axis-aligned box in 3D
  * @param ray Ray to be checked for intersection
- * @param shape Shape to be checked for intersection (axis-aligned box)
+ * @param box Box to be checked for intersection (axis-aligned box)
  * @param reflect_ray Output parameter for reflect ray
  * (contains reflect ray if intersection exists)
  *
  * @return Distance from start of the ray to intersection point if it exists,
  * negative value otherwise
  */
-/*template <typename T>
-auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
-                          Ray<T>& reflect_ray) {
+template <typename T>
+T rayShapeIntersection(const Ray<T>& ray, const Box<T>& box, Ray<T>& reflect_ray) {
   Vec3<T> point_x, point_y, point_z;
-  const auto dist_x =
-      rayFaceIntersection(ray, shape, ray.dir_.x_, shape.min_.x_ - ray.pos_.x_,
-                          shape.max_.x_ - ray.pos_.x_, point_x);
-  const auto dist_y =
-      rayFaceIntersection(ray, shape, ray.dir_.y_, shape.min_.y_ - ray.pos_.y_,
-                          shape.max_.y_ - ray.pos_.y_, point_y);
-  const auto dist_z =
-      rayFaceIntersection(ray, shape, ray.dir_.z_, shape.min_.z_ - ray.pos_.z_,
-                          shape.max_.z_ - ray.pos_.z_, point_z);
+  const T& dist_x =
+      rayFaceIntersection(ray, box, ray.dir_.x_, box.min_.x_ - ray.pos_.x_,
+                          box.max_.x_ - ray.pos_.x_, point_x);
+  const T& dist_y =
+      rayFaceIntersection(ray, box, ray.dir_.y_, box.min_.y_ - ray.pos_.y_,
+                          box.max_.y_ - ray.pos_.y_, point_y);
+  const T& dist_z =
+      rayFaceIntersection(ray, box, ray.dir_.z_, box.min_.z_ - ray.pos_.z_,
+                          box.max_.z_ - ray.pos_.z_, point_z);
 
-  auto res = dist_x;
+  T res = dist_x;
   reflect_ray.pos_ = point_x;
   reflect_ray.dir_ = {-ray.dir_.x_, ray.dir_.y_, ray.dir_.z_};
 
@@ -318,41 +348,7 @@ auto rayShapeIntersection(const Ray<T>& ray, const Shape<T>& shape,
   }
 
   return res;
-}*/
-
-/**
- * @brief shapeDiag
- * @param shape
- */
-/*template <typename T>
-constexpr T shapeDiag(const Box<T>& box) {
-  return vectorLength({box.max_.x_ - box.min_.x_,
-                       box.max_.y_ - box.min_.y_,
-                       box.max_.z_ - box.min_.z_});
 }
-*/
-/**
- * @brief shapeFunc
- * (axis-aligned box)
- * @param child_index
- * @param shape
- * @return
- */
-/*template <typename T>
-constexpr Box<T> childShape(const Box<T>& box, const std::size_t& child_index) {
-  const std::uint8_t x = child_index % 2u;
-  const std::uint8_t y = child_index % 4u / 2u;
-  const std::uint8_t z = child_index % 8u / 4u;
-
-  const Vec3<T>& half = {(box.max_.x_ - box.min_.x_) / 2u,
-                         (box.max_.y_ - box.min_.y_) / 2u,
-                         (box.max_.z_ - box.min_.z_) / 2u};
-
-  return {
-      {shape.min_.x_ + x * half.x_, shape.min_.y_ + y * half.y_, shape.min_.z_ + z * half.z_},
-      {shape.max_.x_ - (x ^ 1u) * half.x_, shape.max_.y_ - (y ^ 1u) * half.y_, shape.max_.z_ - (z ^ 1u) * half.z_}};
-}
-*/
 
 }  // namespace geometry
 }  // namespace october
