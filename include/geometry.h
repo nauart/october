@@ -267,11 +267,11 @@ constexpr T shapeDiag(const Box<T>& box) {
  */
 /*template <typename T, typename I>
 constexpr Box<T> childShape(const Box<T>& box, const I& child_index) {
-  const I& x = child_index % 2u;
-  const I& y = child_index % 4u / 2u;
-  const I& z = child_index % 8u / 4u;
+  const I x = child_index % 2u;
+  const I y = child_index % 4u / 2u;
+  const I z = child_index % 8u / 4u;
 
-  const Vec3<T>& half = {(box.max_.x_ - box.min_.x_) / 2u,
+  const Vec3<T> half = {(box.max_.x_ - box.min_.x_) / 2u,
                          (box.max_.y_ - box.min_.y_) / 2u,
                          (box.max_.z_ - box.min_.z_) / 2u};
 
@@ -299,11 +299,14 @@ template <typename T>
 T rayFaceIntersection(const Ray<T>& ray, const Box<T>& box,
                          const T& alpha, const T& dist_a, const T& dist_b,
                          Vec3<T>& point) {
-  const T& dist = std::min(dist_a / alpha, dist_b / alpha);
-  if (isPositive(dist)) {
-    point = addVectors(ray.pos_, scaleVector(ray.dir_, dist));
-    if (inBox(point, box)) {
-      return dist;
+  if (!isZero(alpha)) {
+    const T dist = std::min(dist_a / alpha, dist_b / alpha);
+    if (isPositive(dist)) {
+      point = addVectors(ray.pos_, scaleVector(ray.dir_, dist));
+      printf("ANosach0: %f %f %f %f\n", dist, point.x_, point.y_, point.z_);
+      if (inBox(point, box)) {
+        return dist;
+      }
     }
   }
   return getMin<T>();
@@ -322,16 +325,17 @@ T rayFaceIntersection(const Ray<T>& ray, const Box<T>& box,
 template <typename T>
 T rayShapeIntersection(const Ray<T>& ray, const Box<T>& box, Ray<T>& reflect_ray) {
   Vec3<T> point_x, point_y, point_z;
-  const T& dist_x =
+  const T dist_x =
       rayFaceIntersection(ray, box, ray.dir_.x_, box.min_.x_ - ray.pos_.x_,
                           box.max_.x_ - ray.pos_.x_, point_x);
-  const T& dist_y =
+  const T dist_y =
       rayFaceIntersection(ray, box, ray.dir_.y_, box.min_.y_ - ray.pos_.y_,
                           box.max_.y_ - ray.pos_.y_, point_y);
-  const T& dist_z =
+  const T dist_z =
       rayFaceIntersection(ray, box, ray.dir_.z_, box.min_.z_ - ray.pos_.z_,
                           box.max_.z_ - ray.pos_.z_, point_z);
 
+  printf("ANosach0: %f %f %f\n", dist_x, dist_y, dist_z);
   T res = dist_x;
   reflect_ray.pos_ = point_x;
   reflect_ray.dir_ = {-ray.dir_.x_, ray.dir_.y_, ray.dir_.z_};
@@ -347,6 +351,7 @@ T rayShapeIntersection(const Ray<T>& ray, const Box<T>& box, Ray<T>& reflect_ray
     reflect_ray.dir_ = {ray.dir_.x_, ray.dir_.y_, -ray.dir_.z_};
   }
 
+  //reflect_ray.dir_ = normalizeVector(reflect_ray.dir_);
   return res;
 }
 
