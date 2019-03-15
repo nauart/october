@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace october {
 namespace geometry {
@@ -284,32 +285,22 @@ constexpr Box<T> childShape(const Box<T>& box, const I& child_index) {
  * @brief Checks for intersection between ray and opposite faces
  * of axis-aligned box in 3D
  *
- * @param ray Ray to be checked for intersection
- * @param box Box to be checked for intersection (axis-aligned box)
- * @param alpha Cos of the angle between ray and face
- * @param dis_a Distance from start of the ray to first of two faces
- * @param dis_b Distance from start of the ray to second of two faces
- * @param point Output parameter for intersection point
- * (contains intersection point if intersection exists)
- *
- * @return Distance from start of the ray to intersection point if it exists,
- * negative value otherwise
+ * @param alpha Cos of the angle between ray and faces
+ * @param a Distance from start of the ray to first of two faces
+ * @param b Distance from start of the ray to second of two faces
+ * @return Pair of distances from start of the ray to point of intersection
+ * with each of faces in ascending order, pair of negative values
+ * if intersection does not exist
  */
 template <typename T>
-T rayFaceIntersection(const Ray<T>& ray, const Box<T>& box,
-                         const T& alpha, const T& dist_a, const T& dist_b,
-                         Vec3<T>& point) {
-  if (!isZero(alpha)) {
-    const T dist = std::min(dist_a / alpha, dist_b / alpha);
-    if (isPositive(dist)) {
-      point = addVectors(ray.pos_, scaleVector(ray.dir_, dist));
-      printf("ANosach0: %f %f %f %f\n", dist, point.x_, point.y_, point.z_);
-      if (inBox(point, box)) {
-        return dist;
-      }
-    }
+std::pair<T, T> rayFacesIntersection(const T& alpha, const T& a, const T& b) {
+  if (isPositive(alpha)) {
+    return {a / alpha, b / alpha};
+  } else if (isNegative(alpha)) {
+    return {b / alpha, a / alpha};
+  } else {
+    return {getMin<T>(), getMin<T>()};
   }
-  return getMin<T>();
 }
 
 /**
@@ -324,16 +315,9 @@ T rayFaceIntersection(const Ray<T>& ray, const Box<T>& box,
  */
 template <typename T>
 T rayShapeIntersection(const Ray<T>& ray, const Box<T>& box, Ray<T>& reflect_ray) {
-  Vec3<T> point_x, point_y, point_z;
-  const T dist_x =
-      rayFaceIntersection(ray, box, ray.dir_.x_, box.min_.x_ - ray.pos_.x_,
-                          box.max_.x_ - ray.pos_.x_, point_x);
-  const T dist_y =
-      rayFaceIntersection(ray, box, ray.dir_.y_, box.min_.y_ - ray.pos_.y_,
-                          box.max_.y_ - ray.pos_.y_, point_y);
-  const T dist_z =
-      rayFaceIntersection(ray, box, ray.dir_.z_, box.min_.z_ - ray.pos_.z_,
-                          box.max_.z_ - ray.pos_.z_, point_z);
+  const T x_v = isPositive(ray.dir_.x_) ? box.min_.x_ : box.max_.x_;
+  const T x_min = box.min_.x_ - ray.pos_.x_ / ray.dir_.x_;
+  const T x_max = box.max_.x_ - ray.pos_.x_ / ray.dir_.x_;
 
   printf("ANosach0: %f %f %f\n", dist_x, dist_y, dist_z);
   T res = dist_x;
